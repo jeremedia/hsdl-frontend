@@ -44,6 +44,13 @@
 						<a href="/search" class="hover:text-chds-yellow transition-colors">Search</a>
 						<a href="/browse" class="hover:text-chds-yellow transition-colors">Browse</a>
 						<a href="/chat" class="hover:text-chds-yellow transition-colors">AI Assistant</a>
+						<a href="/speed" class="flex items-center gap-1.5 hover:text-chds-yellow transition-colors">
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+							</svg>
+							Speed
+							<span class="px-1 py-0.5 text-[10px] font-bold bg-amber-400 text-amber-900 rounded">DEV</span>
+						</a>
 					</nav>
 
 					<!-- Mobile menu button -->
@@ -95,6 +102,17 @@
 							onclick={() => (mobileMenuOpen = false)}
 						>
 							AI Assistant
+						</a>
+						<a
+							href="/speed"
+							class="flex items-center gap-2 py-2 hover:text-chds-yellow"
+							onclick={() => (mobileMenuOpen = false)}
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+							</svg>
+							Speed
+							<span class="px-1 py-0.5 text-[10px] font-bold bg-amber-400 text-amber-900 rounded">DEV</span>
 						</a>
 					</nav>
 				{/if}

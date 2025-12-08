@@ -1,3 +1,5 @@
+import { recordSearchTiming } from './performance';
+
 // API configuration
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://hsdl-ai.domt.app/api/spa/v1';
 
@@ -144,7 +146,7 @@ class ApiClient {
 		return this.fetch(`/taxonomy/${id}`);
 	}
 
-	// Search
+	// Search (with performance timing)
 	async search(params: {
 		q: string;
 		mode?: 'semantic' | 'keyword';
@@ -167,7 +169,20 @@ class ApiClient {
 		if (params.page) searchParams.set('page', String(params.page));
 		if (params.per_page) searchParams.set('per_page', String(params.per_page));
 
-		return this.fetch(`/search?${searchParams.toString()}`);
+		// Time the search request
+		const startTime = performance.now();
+		const result = await this.fetch<SearchResult>(`/search?${searchParams.toString()}`);
+		const duration = performance.now() - startTime;
+
+		// Record timing for Speed dashboard
+		recordSearchTiming({
+			query: params.q,
+			mode: params.mode || 'semantic',
+			duration,
+			resultCount: result.total_count
+		});
+
+		return result;
 	}
 
 	async getSuggestions(q: string): Promise<SuggestionsResult> {
