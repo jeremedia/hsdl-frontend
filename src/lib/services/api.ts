@@ -16,6 +16,36 @@ export interface Document {
 	terms: Array<{ id: string; name: string }>;
 }
 
+export interface FullDocument {
+	id: string;
+	doc_id: number;
+	title: string;
+	alternate_title: string | null;
+	description: string | null;
+	publish_date: string | null;
+	publish_year: number | null;
+	source: string | null;
+	url: string | null;
+	report_number: string | null;
+	file_extension: string | null;
+	file_size: number | null;
+	access_level: string | null;
+	is_thesis: boolean;
+	is_chds_thesis: boolean;
+	full_url: string;
+	pdf_url: string | null;
+	taxonomy: Record<string, Array<{ id: string; name: string }>>;
+	summary: string | null;
+	tags: {
+		keywords?: string[];
+		subjects?: string[];
+		organizations?: string[];
+		places?: string[];
+	} | null;
+	created_at: string;
+	updated_at: string;
+}
+
 export interface SearchResult {
 	query: string;
 	mode: 'semantic' | 'keyword';
@@ -126,7 +156,7 @@ class ApiClient {
 	}
 
 	// Documents
-	async getDocument(id: string): Promise<Document> {
+	async getDocument(id: string): Promise<FullDocument> {
 		return this.fetch(`/documents/${id}`);
 	}
 
