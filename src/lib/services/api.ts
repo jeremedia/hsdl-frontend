@@ -91,6 +91,25 @@ export interface SuggestionsResult {
 	suggestions: Suggestion[];
 }
 
+export interface FacetTerm {
+	id: string;
+	name: string;
+	count: number;
+}
+
+export interface FacetField {
+	id: string;
+	name: string;
+	terms: FacetTerm[];
+}
+
+export interface FacetsResponse {
+	years: Record<number, number>;
+	fields: FacetField[];
+	thesis_counts: { all: number; thesis: number; chds: number };
+	total_count: number;
+}
+
 // API client
 class ApiClient {
 	private baseUrl: string;
@@ -171,12 +190,7 @@ class ApiClient {
 		year_start?: number;
 		year_end?: number;
 		thesis?: 'all' | 'thesis' | 'chds';
-	}): Promise<{
-		years: Record<number, number>;
-		fields: Array<{ id: string; name: string; terms: Array<{ id: string; name: string; count: number }> }>;
-		thesis_counts: { all: number; thesis: number; chds: number };
-		total_count: number;
-	}> {
+	}): Promise<FacetsResponse> {
 		const searchParams = new URLSearchParams();
 		if (params?.q) searchParams.set('q', params.q);
 		if (params?.mode) searchParams.set('mode', params.mode);

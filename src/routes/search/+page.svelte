@@ -3,13 +3,14 @@
 	import { goto } from '$app/navigation';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { api } from '$lib/services/api';
+	import FacetSidebar from '$lib/components/FacetSidebar.svelte';
+	import FilterDrawer from '$lib/components/FilterDrawer.svelte';
+	import FilterPills from '$lib/components/FilterPills.svelte';
 	import {
 		Search,
-		Filter,
 		Calendar,
 		FileText,
 		SlidersHorizontal,
-		X,
 		GraduationCap,
 		ArrowUpDown,
 		ChevronLeft,
@@ -22,41 +23,58 @@
 	let currentPage = $derived(parseInt($page.url.searchParams.get('page') || '1'));
 	let yearStart = $derived($page.url.searchParams.get('year_start') || '');
 	let yearEnd = $derived($page.url.searchParams.get('year_end') || '');
-	let thesis = $derived($page.url.searchParams.get('thesis') || 'all');
+	let thesis = $derived(
+		($page.url.searchParams.get('thesis') as 'all' | 'thesis' | 'chds') || 'all'
+	);
 	let sort = $derived($page.url.searchParams.get('sort') || 'relevance');
 
-	// Local filter state for form
-	let filterYearStart = $state('');
-	let filterYearEnd = $state('');
-	let showFilters = $state(false);
-
-	// Sync filter state with URL params
-	$effect(() => {
-		filterYearStart = yearStart;
-		filterYearEnd = yearEnd;
+	// Parse terms from URL (comma-separated)
+	let selectedTerms = $derived(() => {
+		const termsParam = $page.url.searchParams.get('terms');
+		return termsParam ? termsParam.split(',').filter(Boolean) : [];
 	});
 
-	// Search query
+	// Mobile filter drawer state
+	let showMobileFilters = $state(false);
+
+	// Search query - runs in parallel with facets
 	const searchQuery = createQuery({
-		queryKey: ['search', query, mode, currentPage, yearStart, yearEnd, thesis, sort],
+		queryKey: ['search', query, mode, currentPage, yearStart, yearEnd, thesis, sort, selectedTerms()],
 		queryFn: () =>
 			api.search({
 				q: query,
 				mode,
 				page: currentPage,
 				per_page: 20,
+				terms: selectedTerms().length > 0 ? selectedTerms() : undefined,
 				year_start: yearStart ? parseInt(yearStart) : undefined,
 				year_end: yearEnd ? parseInt(yearEnd) : undefined,
-				thesis: thesis as 'all' | 'thesis' | 'chds',
+				thesis,
 				sort: sort as 'relevance' | 'date' | 'title'
 			}),
 		enabled: !!query
 	});
 
+	// Facets query - runs in parallel with search
+	const facetsQuery = createQuery({
+		queryKey: ['facets', query, mode, yearStart, yearEnd, thesis],
+		queryFn: () =>
+			api.getFacets({
+				q: query || undefined,
+				mode: query ? mode : undefined,
+				year_start: yearStart ? parseInt(yearStart) : undefined,
+				year_end: yearEnd ? parseInt(yearEnd) : undefined,
+				thesis
+			}),
+		enabled: !!query,
+		staleTime: 60000 // Facets can be slightly stale
+	});
+
 	// Build URL with current params
 	function buildUrl(overrides: Record<string, string | undefined> = {}) {
 		const params = new URLSearchParams();
-		const values = {
+		const currentTerms = selectedTerms();
+		const values: Record<string, string | undefined> = {
 			q: query,
 			mode,
 			page: currentPage.toString(),
@@ -64,11 +82,18 @@
 			year_end: yearEnd,
 			thesis,
 			sort,
+			terms: currentTerms.length > 0 ? currentTerms.join(',') : undefined,
 			...overrides
 		};
 
 		for (const [key, value] of Object.entries(values)) {
-			if (value && value !== 'all' && value !== 'relevance' && !(key === 'page' && value === '1')) {
+			if (
+				value &&
+				value !== 'all' &&
+				value !== 'relevance' &&
+				value !== 'semantic' &&
+				!(key === 'page' && value === '1')
+			) {
 				params.set(key, value);
 			}
 		}
@@ -76,24 +101,47 @@
 		return `/search?${params.toString()}`;
 	}
 
-	function applyFilters() {
-		goto(
-			buildUrl({
-				year_start: filterYearStart || undefined,
-				year_end: filterYearEnd || undefined,
-				page: '1'
-			})
-		);
+	// Filter handlers
+	function handleTermToggle(termId: string) {
+		const current = selectedTerms();
+		let newTerms: string[];
+		if (current.includes(termId)) {
+			newTerms = current.filter((t) => t !== termId);
+		} else {
+			newTerms = [...current, termId];
+		}
+		goto(buildUrl({ terms: newTerms.length > 0 ? newTerms.join(',') : undefined, page: '1' }));
 	}
 
-	function clearFilters() {
-		filterYearStart = '';
-		filterYearEnd = '';
-		goto(buildUrl({ year_start: undefined, year_end: undefined, thesis: 'all', page: '1' }));
+	function handleYearChange(start: string, end: string) {
+		goto(buildUrl({ year_start: start || undefined, year_end: end || undefined, page: '1' }));
+	}
+
+	function handleThesisChange(value: 'all' | 'thesis' | 'chds') {
+		goto(buildUrl({ thesis: value === 'all' ? undefined : value, page: '1' }));
+	}
+
+	function handleClearYears() {
+		goto(buildUrl({ year_start: undefined, year_end: undefined, page: '1' }));
+	}
+
+	function handleClearThesis() {
+		goto(buildUrl({ thesis: undefined, page: '1' }));
+	}
+
+	function handleClearAll() {
+		goto(buildUrl({ terms: undefined, year_start: undefined, year_end: undefined, thesis: undefined, page: '1' }));
 	}
 
 	function hasActiveFilters(): boolean {
-		return !!(yearStart || yearEnd || thesis !== 'all');
+		return selectedTerms().length > 0 || yearStart !== '' || yearEnd !== '' || thesis !== 'all';
+	}
+
+	function getActiveFilterCount(): number {
+		let count = selectedTerms().length;
+		if (yearStart || yearEnd) count++;
+		if (thesis !== 'all') count++;
+		return count;
 	}
 
 	// Relevance bar helpers
@@ -130,6 +178,22 @@
 <svelte:head>
 	<title>{query ? `"${query}" - Search` : 'Search'} | HSDL</title>
 </svelte:head>
+
+<!-- Mobile Filter Drawer -->
+<FilterDrawer
+	open={showMobileFilters}
+	facets={$facetsQuery.data ?? null}
+	selectedTerms={selectedTerms()}
+	{yearStart}
+	{yearEnd}
+	{thesis}
+	onTermToggle={handleTermToggle}
+	onYearChange={handleYearChange}
+	onThesisChange={handleThesisChange}
+	onClearAll={handleClearAll}
+	onClose={() => (showMobileFilters = false)}
+	loading={$facetsQuery.isPending}
+/>
 
 <div class="max-w-7xl mx-auto px-4 py-6 sm:py-8">
 	<!-- Search Header -->
@@ -174,7 +238,7 @@
 				</div>
 			</div>
 
-			<!-- Filter and Sort -->
+			<!-- Sort and Mobile Filter Button -->
 			<div class="flex items-center gap-2">
 				<!-- Sort -->
 				<div class="flex items-center gap-1">
@@ -189,99 +253,30 @@
 					</select>
 				</div>
 
-				<!-- Filter toggle -->
+				<!-- Mobile Filter Button -->
 				<button
-					onclick={() => (showFilters = !showFilters)}
-					class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {showFilters || hasActiveFilters()
+					onclick={() => (showMobileFilters = true)}
+					class="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {hasActiveFilters()
 						? 'bg-chds-blue text-white'
 						: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
 				>
 					<SlidersHorizontal class="w-4 h-4" />
 					Filters
-					{#if hasActiveFilters()}
-						<span class="w-2 h-2 rounded-full bg-chds-gold"></span>
+					{#if getActiveFilterCount() > 0}
+						<span
+							class="w-5 h-5 flex items-center justify-center rounded-full text-xs {hasActiveFilters()
+								? 'bg-white text-chds-blue'
+								: 'bg-chds-blue text-white'}"
+						>
+							{getActiveFilterCount()}
+						</span>
 					{/if}
 				</button>
 			</div>
 		</div>
-
-		<!-- Filter Panel -->
-		{#if showFilters}
-			<div class="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-				<div class="flex flex-wrap gap-6">
-					<!-- Year Range -->
-					<div class="flex items-center gap-2">
-						<Calendar class="w-4 h-4 text-gray-400" />
-						<span class="text-sm text-gray-600">Year:</span>
-						<input
-							type="number"
-							placeholder="From"
-							bind:value={filterYearStart}
-							class="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
-							min="1900"
-							max="2030"
-						/>
-						<span class="text-gray-400">-</span>
-						<input
-							type="number"
-							placeholder="To"
-							bind:value={filterYearEnd}
-							class="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
-							min="1900"
-							max="2030"
-						/>
-					</div>
-
-					<!-- Thesis Filter -->
-					<div class="flex items-center gap-2">
-						<GraduationCap class="w-4 h-4 text-gray-400" />
-						<span class="text-sm text-gray-600">Type:</span>
-						<div class="flex gap-1">
-							<a
-								href={buildUrl({ thesis: 'all', page: '1' })}
-								class="px-2.5 py-1 rounded text-sm {thesis === 'all'
-									? 'bg-chds-navy text-white'
-									: 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}"
-							>
-								All
-							</a>
-							<a
-								href={buildUrl({ thesis: 'thesis', page: '1' })}
-								class="px-2.5 py-1 rounded text-sm {thesis === 'thesis'
-									? 'bg-chds-navy text-white'
-									: 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}"
-							>
-								Theses
-							</a>
-							<a
-								href={buildUrl({ thesis: 'chds', page: '1' })}
-								class="px-2.5 py-1 rounded text-sm {thesis === 'chds'
-									? 'bg-chds-gold text-chds-navy font-medium'
-									: 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}"
-							>
-								CHDS Only
-							</a>
-						</div>
-					</div>
-				</div>
-
-				<!-- Filter Actions -->
-				<div class="mt-4 flex gap-2">
-					<button onclick={applyFilters} class="btn btn-primary text-sm py-1.5">
-						Apply Filters
-					</button>
-					{#if hasActiveFilters()}
-						<button onclick={clearFilters} class="btn btn-outline text-sm py-1.5">
-							<X class="w-4 h-4" />
-							Clear
-						</button>
-					{/if}
-				</div>
-			</div>
-		{/if}
 	</div>
 
-	<!-- Results -->
+	<!-- Main Content with Sidebar -->
 	{#if !query}
 		<div class="text-center py-16 text-gray-500">
 			<Search class="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -290,149 +285,207 @@
 				Try searching for topics like "cybersecurity", "terrorism", or "emergency management"
 			</p>
 		</div>
-	{:else if $searchQuery.isPending}
-		<div class="space-y-4">
-			{#each Array(5) as _}
-				<div class="card p-4">
-					<div class="skeleton h-6 w-3/4 mb-2 rounded"></div>
-					<div class="skeleton h-4 w-full mb-1 rounded"></div>
-					<div class="skeleton h-4 w-2/3 rounded"></div>
+	{:else}
+		<div class="flex gap-6">
+			<!-- Desktop Sidebar -->
+			<div class="hidden lg:block w-72 flex-shrink-0">
+				<div class="sticky top-4 max-h-[calc(100vh-8rem)] overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+					<FacetSidebar
+						facets={$facetsQuery.data ?? null}
+						selectedTerms={selectedTerms()}
+						{yearStart}
+						{yearEnd}
+						{thesis}
+						onTermToggle={handleTermToggle}
+						onYearChange={handleYearChange}
+						onThesisChange={handleThesisChange}
+						onClearAll={handleClearAll}
+						loading={$facetsQuery.isPending}
+					/>
 				</div>
-			{/each}
-		</div>
-	{:else if $searchQuery.isError}
-		<div class="text-center py-16">
-			<p class="text-red-500 mb-4">Error loading results: {$searchQuery.error.message}</p>
-			<button onclick={() => $searchQuery.refetch()} class="btn btn-primary">
-				Try Again
-			</button>
-		</div>
-	{:else if $searchQuery.data}
-		{@const data = $searchQuery.data}
+			</div>
 
-		<!-- Results Count -->
-		<div class="mb-4 flex items-center justify-between">
-			<p class="text-sm text-gray-600">
-				Found <span class="font-semibold">{data.total_count.toLocaleString()}</span> results for
-				<span class="font-medium">"{data.query}"</span>
-			</p>
-			{#if data.total_pages > 1}
-				<p class="text-sm text-gray-500">
-					Page {data.page} of {data.total_pages.toLocaleString()}
-				</p>
-			{/if}
-		</div>
+			<!-- Results Area -->
+			<div class="flex-1 min-w-0">
+				<!-- Filter Pills (visible when filters are active) -->
+				<FilterPills
+					facets={$facetsQuery.data ?? null}
+					selectedTerms={selectedTerms()}
+					{yearStart}
+					{yearEnd}
+					{thesis}
+					onRemoveTerm={handleTermToggle}
+					onClearYears={handleClearYears}
+					onClearThesis={handleClearThesis}
+					onClearAll={handleClearAll}
+				/>
 
-		<!-- Results List -->
-		<div class="space-y-3">
-			{#each data.results as doc}
-				<article class="card p-4 hover:shadow-md transition-shadow">
-					<div class="flex items-start gap-4">
-						<div class="flex-1 min-w-0">
-							<a href="/doc/{doc.id}" class="group">
-								<h2
-									class="font-semibold text-lg text-gray-900 group-hover:text-chds-blue transition-colors line-clamp-2"
-								>
-									{doc.title}
-								</h2>
-							</a>
-
-							{#if doc.description}
-								<p class="mt-2 text-gray-600 line-clamp-2 text-sm">
-									{doc.description}
-								</p>
-							{/if}
-
-							<div class="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-								{#if doc.publish_year}
-									<span class="flex items-center gap-1">
-										<Calendar class="w-4 h-4" />
-										{doc.publish_year}
-									</span>
-								{/if}
-								<span class="flex items-center gap-1">
-									<FileText class="w-4 h-4" />
-									{doc.doc_type}
-								</span>
-								{#if doc.is_thesis}
-									<span class="badge bg-blue-100 text-blue-700">
-										<GraduationCap class="w-3 h-3 mr-1" />
-										Thesis
-									</span>
-								{/if}
-								{#if doc.terms.length > 0}
-									<div class="hidden sm:flex gap-1">
-										{#each doc.terms.slice(0, 2) as term}
-											<span class="badge badge-secondary">{term.name}</span>
-										{/each}
-									</div>
-								{/if}
+				{#if $searchQuery.isPending}
+					<div class="space-y-4">
+						{#each Array(5) as _}
+							<div class="card p-4">
+								<div class="skeleton h-6 w-3/4 mb-2 rounded"></div>
+								<div class="skeleton h-4 w-full mb-1 rounded"></div>
+								<div class="skeleton h-4 w-2/3 rounded"></div>
 							</div>
-						</div>
+						{/each}
+					</div>
+				{:else if $searchQuery.isError}
+					<div class="text-center py-16">
+						<p class="text-red-500 mb-4">Error loading results: {$searchQuery.error.message}</p>
+						<button onclick={() => $searchQuery.refetch()} class="btn btn-primary">
+							Try Again
+						</button>
+					</div>
+				{:else if $searchQuery.data}
+					{@const data = $searchQuery.data}
 
-						<!-- Relevance score (for semantic search) -->
-						{#if doc.relevance_score !== undefined}
-							<div class="flex-shrink-0 w-16 text-right">
-								<div class="text-sm font-semibold text-gray-700">
-									{Math.round(doc.relevance_score * 100)}%
-								</div>
-								<div class="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-									<div
-										class="h-full {getRelevanceColor(doc.relevance_score)} transition-all"
-										style="width: {getRelevanceWidth(doc.relevance_score)}"
-									></div>
-								</div>
-								<div class="text-xs text-gray-400 mt-0.5">match</div>
-							</div>
+					<!-- Results Count -->
+					<div class="mb-4 flex items-center justify-between">
+						<p class="text-sm text-gray-600">
+							Found <span class="font-semibold">{data.total_count.toLocaleString()}</span> results
+							for
+							<span class="font-medium">"{data.query}"</span>
+						</p>
+						{#if data.total_pages > 1}
+							<p class="text-sm text-gray-500">
+								Page {data.page} of {data.total_pages.toLocaleString()}
+							</p>
 						{/if}
 					</div>
-				</article>
-			{/each}
-		</div>
 
-		<!-- Pagination -->
-		{#if data.total_pages > 1}
-			<nav class="mt-8 flex items-center justify-center gap-1">
-				<!-- Previous -->
-				<a
-					href={data.page > 1 ? buildUrl({ page: (data.page - 1).toString() }) : '#'}
-					class="p-2 rounded-lg {data.page > 1
-						? 'hover:bg-gray-100 text-gray-600'
-						: 'text-gray-300 cursor-not-allowed'}"
-					aria-disabled={data.page <= 1}
-				>
-					<ChevronLeft class="w-5 h-5" />
-				</a>
-
-				<!-- Page numbers -->
-				{#each getPageNumbers(data.page, data.total_pages) as pageNum}
-					{#if pageNum === '...'}
-						<span class="px-2 text-gray-400">...</span>
+					<!-- Results List -->
+					{#if data.results.length === 0}
+						<div class="text-center py-12 text-gray-500">
+							<Search class="w-12 h-12 mx-auto mb-3 opacity-50" />
+							<p>No documents match your search criteria</p>
+							{#if hasActiveFilters()}
+								<button
+									onclick={handleClearAll}
+									class="mt-3 text-chds-blue hover:text-chds-navy"
+								>
+									Clear filters and try again
+								</button>
+							{/if}
+						</div>
 					{:else}
-						<a
-							href={buildUrl({ page: pageNum.toString() })}
-							class="px-3 py-1.5 rounded-lg text-sm font-medium {pageNum === data.page
-								? 'bg-chds-blue text-white'
-								: 'hover:bg-gray-100 text-gray-600'}"
-						>
-							{pageNum}
-						</a>
-					{/if}
-				{/each}
+						<div class="space-y-3">
+							{#each data.results as doc}
+								<article class="card p-4 hover:shadow-md transition-shadow">
+									<div class="flex items-start gap-4">
+										<div class="flex-1 min-w-0">
+											<a href="/doc/{doc.id}" class="group">
+												<h2
+													class="font-semibold text-lg text-gray-900 group-hover:text-chds-blue transition-colors line-clamp-2"
+												>
+													{doc.title}
+												</h2>
+											</a>
 
-				<!-- Next -->
-				<a
-					href={data.page < data.total_pages
-						? buildUrl({ page: (data.page + 1).toString() })
-						: '#'}
-					class="p-2 rounded-lg {data.page < data.total_pages
-						? 'hover:bg-gray-100 text-gray-600'
-						: 'text-gray-300 cursor-not-allowed'}"
-					aria-disabled={data.page >= data.total_pages}
-				>
-					<ChevronRight class="w-5 h-5" />
-				</a>
-			</nav>
-		{/if}
+											{#if doc.description}
+												<p class="mt-2 text-gray-600 line-clamp-2 text-sm">
+													{doc.description}
+												</p>
+											{/if}
+
+											<div
+												class="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500"
+											>
+												{#if doc.publish_year}
+													<span class="flex items-center gap-1">
+														<Calendar class="w-4 h-4" />
+														{doc.publish_year}
+													</span>
+												{/if}
+												<span class="flex items-center gap-1">
+													<FileText class="w-4 h-4" />
+													{doc.doc_type}
+												</span>
+												{#if doc.is_thesis}
+													<span class="badge bg-blue-100 text-blue-700">
+														<GraduationCap class="w-3 h-3 mr-1" />
+														Thesis
+													</span>
+												{/if}
+												{#if doc.terms.length > 0}
+													<div class="hidden sm:flex gap-1">
+														{#each doc.terms.slice(0, 2) as term}
+															<span class="badge badge-secondary">{term.name}</span>
+														{/each}
+													</div>
+												{/if}
+											</div>
+										</div>
+
+										<!-- Relevance score (for semantic search) -->
+										{#if doc.relevance_score !== undefined}
+											<div class="flex-shrink-0 w-16 text-right">
+												<div class="text-sm font-semibold text-gray-700">
+													{Math.round(doc.relevance_score * 100)}%
+												</div>
+												<div class="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+													<div
+														class="h-full {getRelevanceColor(
+															doc.relevance_score
+														)} transition-all"
+														style="width: {getRelevanceWidth(doc.relevance_score)}"
+													></div>
+												</div>
+												<div class="text-xs text-gray-400 mt-0.5">match</div>
+											</div>
+										{/if}
+									</div>
+								</article>
+							{/each}
+						</div>
+
+						<!-- Pagination -->
+						{#if data.total_pages > 1}
+							<nav class="mt-8 flex items-center justify-center gap-1">
+								<!-- Previous -->
+								<a
+									href={data.page > 1 ? buildUrl({ page: (data.page - 1).toString() }) : '#'}
+									class="p-2 rounded-lg {data.page > 1
+										? 'hover:bg-gray-100 text-gray-600'
+										: 'text-gray-300 cursor-not-allowed'}"
+									aria-disabled={data.page <= 1}
+								>
+									<ChevronLeft class="w-5 h-5" />
+								</a>
+
+								<!-- Page numbers -->
+								{#each getPageNumbers(data.page, data.total_pages) as pageNum}
+									{#if pageNum === '...'}
+										<span class="px-2 text-gray-400">...</span>
+									{:else}
+										<a
+											href={buildUrl({ page: pageNum.toString() })}
+											class="px-3 py-1.5 rounded-lg text-sm font-medium {pageNum === data.page
+												? 'bg-chds-blue text-white'
+												: 'hover:bg-gray-100 text-gray-600'}"
+										>
+											{pageNum}
+										</a>
+									{/if}
+								{/each}
+
+								<!-- Next -->
+								<a
+									href={data.page < data.total_pages
+										? buildUrl({ page: (data.page + 1).toString() })
+										: '#'}
+									class="p-2 rounded-lg {data.page < data.total_pages
+										? 'hover:bg-gray-100 text-gray-600'
+										: 'text-gray-300 cursor-not-allowed'}"
+									aria-disabled={data.page >= data.total_pages}
+								>
+									<ChevronRight class="w-5 h-5" />
+								</a>
+							</nav>
+						{/if}
+					{/if}
+				{/if}
+			</div>
+		</div>
 	{/if}
 </div>
