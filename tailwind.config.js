@@ -5,22 +5,93 @@ export default {
 	theme: {
 		extend: {
 			colors: {
-				// CHDS Brand Colors
+				// Theme-aware colors using CSS variables
+				primary: {
+					50: 'var(--color-primary-50)',
+					100: 'var(--color-primary-100)',
+					200: 'var(--color-primary-200)',
+					300: 'var(--color-primary-300)',
+					400: 'var(--color-primary-400)',
+					500: 'var(--color-primary-500)',
+					600: 'var(--color-primary-600)',
+					700: 'var(--color-primary-700)',
+					800: 'var(--color-primary-800)',
+					900: 'var(--color-primary-900)',
+					DEFAULT: 'var(--color-primary-600)'
+				},
+				accent: {
+					50: 'var(--color-accent-50)',
+					100: 'var(--color-accent-100)',
+					200: 'var(--color-accent-200)',
+					300: 'var(--color-accent-300)',
+					400: 'var(--color-accent-400)',
+					500: 'var(--color-accent-500)',
+					600: 'var(--color-accent-600)',
+					700: 'var(--color-accent-700)',
+					800: 'var(--color-accent-800)',
+					900: 'var(--color-accent-900)',
+					DEFAULT: 'var(--color-accent-500)'
+				},
+				// CHDS legacy colors (for backwards compatibility)
 				chds: {
 					navy: '#002B58',
 					blue: '#0268BB',
 					yellow: '#FED402',
 					gold: '#FCB900'
 				},
-				// Semantic colors
-				success: '#6B9D3F',
-				error: '#ef4444',
-				warning: '#FED402',
-				info: '#0268BB'
+				// Semantic surface colors
+				surface: {
+					DEFAULT: 'var(--color-surface)',
+					elevated: 'var(--color-surface-elevated)',
+					secondary: 'var(--color-surface-secondary)',
+					overlay: 'var(--color-surface-overlay)'
+				},
+				// Semantic text colors
+				'text-theme': {
+					primary: 'var(--color-text-primary)',
+					secondary: 'var(--color-text-secondary)',
+					tertiary: 'var(--color-text-tertiary)',
+					inverse: 'var(--color-text-inverse)'
+				},
+				// Semantic border colors
+				'border-theme': {
+					DEFAULT: 'var(--color-border)',
+					strong: 'var(--color-border-strong)'
+				},
+				// Interactive colors
+				interactive: {
+					DEFAULT: 'var(--color-interactive)',
+					hover: 'var(--color-interactive-hover)',
+					active: 'var(--color-interactive-active)'
+				},
+				// Header colors
+				header: {
+					bg: 'var(--color-header-bg)',
+					text: 'var(--color-header-text)',
+					accent: 'var(--color-header-accent)'
+				},
+				// Status colors
+				success: {
+					DEFAULT: 'var(--color-success)',
+					light: 'var(--color-success-light)'
+				},
+				error: {
+					DEFAULT: 'var(--color-error)',
+					light: 'var(--color-error-light)'
+				},
+				warning: {
+					DEFAULT: 'var(--color-warning)',
+					light: 'var(--color-warning-light)'
+				},
+				info: {
+					DEFAULT: 'var(--color-info)',
+					light: 'var(--color-info-light)'
+				}
 			},
 			fontFamily: {
-				sans: ['Open Sans', 'Helvetica', 'Arial', 'sans-serif'],
-				serif: ['Source Serif Pro', 'Georgia', 'serif']
+				sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+				serif: ['var(--font-serif)', 'Georgia', 'serif'],
+				mono: ['var(--font-mono)', 'monospace']
 			},
 			fontSize: {
 				// Type scale on 8px baseline grid
@@ -53,14 +124,13 @@ export default {
 				20: '5rem' // 80px
 			},
 			borderRadius: {
-				DEFAULT: '0.25rem',
-				none: '0',
-				sm: '0.125rem',
-				md: '0.375rem',
-				lg: '0.5rem',
-				xl: '0.75rem',
-				'2xl': '1rem',
-				full: '9999px'
+				DEFAULT: 'var(--radius-md)',
+				none: 'var(--radius-none)',
+				sm: 'var(--radius-sm)',
+				md: 'var(--radius-md)',
+				lg: 'var(--radius-lg)',
+				xl: 'var(--radius-xl)',
+				full: 'var(--radius-full)'
 			},
 			boxShadow: {
 				sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
@@ -77,6 +147,15 @@ export default {
 					'0%, 100%': { opacity: '0.4' },
 					'50%': { opacity: '0.8' }
 				}
+			},
+			transitionDuration: {
+				fast: 'var(--duration-fast)',
+				normal: 'var(--duration-normal)',
+				slow: 'var(--duration-slow)'
+			},
+			transitionTimingFunction: {
+				'ease-out': 'var(--ease-out)',
+				'ease-in-out': 'var(--ease-in-out)'
 			}
 		}
 	},

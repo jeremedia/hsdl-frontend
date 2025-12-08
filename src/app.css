@@ -1,21 +1,29 @@
+/* Font imports must come first */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* CHDS Design Tokens */
+/* =============================================================================
+   HSDL Multi-Theme System
+
+   Themes:
+   - CHDS Official (data-theme="chds") - Professional institutional look
+   - Developer (data-theme="developer") - Modern tech-focused aesthetic
+
+   Each theme supports:
+   - Light mode (default)
+   - Dark mode (.dark class)
+   - Auto mode (follows system preference)
+
+   ============================================================================= */
+
+/* =============================================================================
+   BASE TOKENS (Shared Foundation)
+   ============================================================================= */
+
 :root {
-	/* Colors */
-	--color-chds-navy: #002b58;
-	--color-chds-blue: #0268bb;
-	--color-chds-yellow: #fed402;
-	--color-chds-gold: #fcb900;
-
-	/* Semantic */
-	--color-success: #6b9d3f;
-	--color-error: #ef4444;
-	--color-warning: #fed402;
-	--color-info: #0268bb;
-
 	/* Spacing (8px grid) */
 	--space-1: 0.25rem;
 	--space-2: 0.5rem;
@@ -32,32 +40,359 @@
 	--duration-slow: 500ms;
 	--ease-out: cubic-bezier(0, 0, 0.2, 1);
 	--ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+	/* Theme transition */
+	--theme-transition: background-color var(--duration-normal) var(--ease-in-out),
+		color var(--duration-normal) var(--ease-in-out),
+		border-color var(--duration-normal) var(--ease-in-out),
+		box-shadow var(--duration-normal) var(--ease-in-out);
 }
 
-/* Dark mode tokens */
-.dark {
-	--color-bg: #1a1a2e;
-	--color-surface: #16213e;
-	--color-text: #f7f7f7;
-	--color-text-secondary: #b3b3b3;
+/* =============================================================================
+   CHDS OFFICIAL THEME (Default)
+   Professional institutional look with Navy, Blue, and Gold
+   ============================================================================= */
+
+:root,
+[data-theme='chds'] {
+	/* Primary Colors (CHDS Navy #002B58) */
+	--color-primary-50: #e6ecf3;
+	--color-primary-100: #ccd9e7;
+	--color-primary-200: #99b3cf;
+	--color-primary-300: #668db7;
+	--color-primary-400: #33679f;
+	--color-primary-500: #004187;
+	--color-primary-600: #002b58; /* Official CHDS Navy */
+	--color-primary-700: #002247;
+	--color-primary-800: #001a36;
+	--color-primary-900: #001225;
+
+	/* Accent Colors (CHDS Yellow/Gold) */
+	--color-accent-50: #fffceb;
+	--color-accent-100: #fff8d6;
+	--color-accent-200: #fff1ad;
+	--color-accent-300: #ffea84;
+	--color-accent-400: #ffe35b;
+	--color-accent-500: #fed402; /* Official CHDS Yellow */
+	--color-accent-600: #fcb900; /* Official CHDS Gold */
+	--color-accent-700: #b39602;
+	--color-accent-800: #806d01;
+	--color-accent-900: #4e4301;
+
+	/* Interactive Blue (for links/buttons) */
+	--color-interactive: #0268bb; /* Official CHDS Blue */
+	--color-interactive-hover: #015a9f;
+	--color-interactive-active: #014a82;
+
+	/* Gray Scale */
+	--color-gray-50: #f7f7f7;
+	--color-gray-100: #e5e5e5;
+	--color-gray-200: #cccccc;
+	--color-gray-300: #b3b3b3;
+	--color-gray-400: #999999;
+	--color-gray-500: #808080;
+	--color-gray-600: #666666;
+	--color-gray-700: #4d4d4d;
+	--color-gray-800: #333333;
+	--color-gray-900: #2a2a2a;
+
+	/* Semantic Surface Colors - Light Mode */
+	--color-surface: var(--color-gray-50);
+	--color-surface-elevated: #ffffff;
+	--color-surface-secondary: #ffffff;
+	--color-surface-overlay: #ffffff;
+
+	/* Text Colors - Light Mode */
+	--color-text-primary: var(--color-gray-900);
+	--color-text-secondary: var(--color-gray-600);
+	--color-text-tertiary: var(--color-gray-500);
+	--color-text-inverse: #ffffff;
+
+	/* Border Colors - Light Mode */
+	--color-border: var(--color-gray-200);
+	--color-border-strong: var(--color-accent-600);
+	--color-divider: var(--color-gray-200);
+
+	/* Interactive States */
+	--color-link: var(--color-interactive);
+	--color-link-hover: var(--color-interactive-hover);
+	--color-focus-ring: var(--color-interactive);
+
+	/* Header/Nav Specific */
+	--color-header-bg: var(--color-primary-600);
+	--color-header-text: #ffffff;
+	--color-header-accent: var(--color-accent-500);
+
+	/* Status Colors */
+	--color-success: #6b9d3f;
+	--color-success-light: #e8f5e0;
+	--color-error: #ef4444;
+	--color-error-light: #fee2e2;
+	--color-warning: #fed402;
+	--color-warning-light: #fef9c3;
+	--color-info: #0268bb;
+	--color-info-light: #e0f2fe;
+
+	/* Font Family */
+	--font-sans: 'Open Sans', 'Helvetica', 'Arial', sans-serif;
+	--font-serif: 'Source Serif Pro', 'Georgia', serif;
+	--font-mono: 'SF Mono', 'Monaco', 'Consolas', monospace;
+
+	/* Border Radius - CHDS uses sharp corners */
+	--radius-none: 0;
+	--radius-sm: 0;
+	--radius-md: 0;
+	--radius-lg: 0;
+	--radius-xl: 0;
+	--radius-full: 9999px;
 }
 
-/* Base styles */
+/* CHDS Dark Mode */
+[data-theme='chds'].dark,
+.dark[data-theme='chds'],
+:root.dark {
+	/* Surface Colors - Dark Mode */
+	--color-surface: #0f172a;
+	--color-surface-elevated: #1e293b;
+	--color-surface-secondary: #334155;
+	--color-surface-overlay: #1e293b;
+
+	/* Text Colors - Dark Mode */
+	--color-text-primary: #f1f5f9;
+	--color-text-secondary: #94a3b8;
+	--color-text-tertiary: #64748b;
+	--color-text-inverse: var(--color-primary-600);
+
+	/* Border Colors - Dark Mode */
+	--color-border: #334155;
+	--color-border-strong: var(--color-accent-600);
+	--color-divider: #334155;
+
+	/* Gray adjustments for dark */
+	--color-gray-50: #0f172a;
+	--color-gray-100: #1e293b;
+	--color-gray-200: #334155;
+	--color-gray-300: #475569;
+	--color-gray-400: #64748b;
+	--color-gray-500: #94a3b8;
+	--color-gray-600: #cbd5e1;
+	--color-gray-700: #e2e8f0;
+	--color-gray-800: #f1f5f9;
+	--color-gray-900: #f8fafc;
+
+	/* Interactive adjustments */
+	--color-interactive: #60a5fa;
+	--color-interactive-hover: #93c5fd;
+
+	/* Status Colors - Dark Mode */
+	--color-success: #4ade80;
+	--color-success-light: #14532d;
+	--color-error: #f87171;
+	--color-error-light: #7f1d1d;
+	--color-warning: #fbbf24;
+	--color-warning-light: #78350f;
+	--color-info: #60a5fa;
+	--color-info-light: #1e3a5f;
+}
+
+/* =============================================================================
+   DEVELOPER THEME
+   Modern tech-focused aesthetic with Berkeley Mono and muted colors
+   ============================================================================= */
+
+[data-theme='developer'] {
+	/* Primary Colors (Slate/Charcoal) */
+	--color-primary-50: #f8fafc;
+	--color-primary-100: #f1f5f9;
+	--color-primary-200: #e2e8f0;
+	--color-primary-300: #cbd5e1;
+	--color-primary-400: #94a3b8;
+	--color-primary-500: #64748b;
+	--color-primary-600: #1e293b; /* Main charcoal */
+	--color-primary-700: #0f172a;
+	--color-primary-800: #0c1222;
+	--color-primary-900: #080d19;
+
+	/* Accent Colors (Cyan/Teal - dev tool aesthetic) */
+	--color-accent-50: #ecfeff;
+	--color-accent-100: #cffafe;
+	--color-accent-200: #a5f3fc;
+	--color-accent-300: #67e8f9;
+	--color-accent-400: #22d3ee;
+	--color-accent-500: #06b6d4; /* Main cyan */
+	--color-accent-600: #0891b2;
+	--color-accent-700: #0e7490;
+	--color-accent-800: #155e75;
+	--color-accent-900: #164e63;
+
+	/* Interactive (Violet for contrast) */
+	--color-interactive: #8b5cf6;
+	--color-interactive-hover: #a78bfa;
+	--color-interactive-active: #7c3aed;
+
+	/* Gray Scale (Slate) */
+	--color-gray-50: #f8fafc;
+	--color-gray-100: #f1f5f9;
+	--color-gray-200: #e2e8f0;
+	--color-gray-300: #cbd5e1;
+	--color-gray-400: #94a3b8;
+	--color-gray-500: #64748b;
+	--color-gray-600: #475569;
+	--color-gray-700: #334155;
+	--color-gray-800: #1e293b;
+	--color-gray-900: #0f172a;
+
+	/* Semantic Surface Colors - Light Mode */
+	--color-surface: #f8fafc;
+	--color-surface-elevated: #ffffff;
+	--color-surface-secondary: #f1f5f9;
+	--color-surface-overlay: #ffffff;
+
+	/* Text Colors - Light Mode */
+	--color-text-primary: #0f172a;
+	--color-text-secondary: #475569;
+	--color-text-tertiary: #64748b;
+	--color-text-inverse: #ffffff;
+
+	/* Border Colors - Light Mode */
+	--color-border: #e2e8f0;
+	--color-border-strong: var(--color-accent-500);
+	--color-divider: #e2e8f0;
+
+	/* Header/Nav Specific */
+	--color-header-bg: var(--color-primary-700);
+	--color-header-text: #ffffff;
+	--color-header-accent: var(--color-accent-400);
+
+	/* Status Colors */
+	--color-success: #10b981;
+	--color-success-light: #d1fae5;
+	--color-error: #ef4444;
+	--color-error-light: #fee2e2;
+	--color-warning: #f59e0b;
+	--color-warning-light: #fef3c7;
+	--color-info: #06b6d4;
+	--color-info-light: #cffafe;
+
+	/* Font Family - Berkeley Mono for dev aesthetic */
+	--font-sans: 'Inter', 'SF Pro Display', system-ui, sans-serif;
+	--font-serif: 'Source Serif Pro', 'Georgia', serif;
+	--font-mono: 'Berkeley Mono', 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+
+	/* Border Radius - Developer theme uses subtle rounding */
+	--radius-none: 0;
+	--radius-sm: 0.25rem;
+	--radius-md: 0.375rem;
+	--radius-lg: 0.5rem;
+	--radius-xl: 0.75rem;
+	--radius-full: 9999px;
+}
+
+/* Developer Dark Mode */
+[data-theme='developer'].dark,
+.dark[data-theme='developer'] {
+	/* Surface Colors - Dark Mode (Deep charcoal) */
+	--color-surface: #0a0a0f;
+	--color-surface-elevated: #111118;
+	--color-surface-secondary: #1a1a24;
+	--color-surface-overlay: #111118;
+
+	/* Text Colors - Dark Mode */
+	--color-text-primary: #e2e8f0;
+	--color-text-secondary: #94a3b8;
+	--color-text-tertiary: #64748b;
+	--color-text-inverse: #0f172a;
+
+	/* Border Colors - Dark Mode */
+	--color-border: #2d2d3a;
+	--color-border-strong: var(--color-accent-500);
+	--color-divider: #2d2d3a;
+
+	/* Gray adjustments for dark */
+	--color-gray-50: #0a0a0f;
+	--color-gray-100: #111118;
+	--color-gray-200: #1a1a24;
+	--color-gray-300: #2d2d3a;
+	--color-gray-400: #4a4a5a;
+	--color-gray-500: #6b6b7a;
+	--color-gray-600: #8b8b9a;
+	--color-gray-700: #ababba;
+	--color-gray-800: #cbcbda;
+	--color-gray-900: #ebebfa;
+
+	/* Interactive adjustments */
+	--color-interactive: #a78bfa;
+	--color-interactive-hover: #c4b5fd;
+
+	/* Status Colors - Dark Mode */
+	--color-success: #34d399;
+	--color-success-light: #064e3b;
+	--color-error: #f87171;
+	--color-error-light: #7f1d1d;
+	--color-warning: #fbbf24;
+	--color-warning-light: #78350f;
+	--color-info: #22d3ee;
+	--color-info-light: #164e63;
+}
+
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
+
 @layer base {
 	html {
-		font-family: 'Open Sans', system-ui, sans-serif;
+		font-family: var(--font-sans);
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
 	}
 
 	body {
-		@apply bg-gray-50 text-gray-800;
-		@apply dark:bg-[#1a1a2e] dark:text-gray-100;
+		background-color: var(--color-surface);
+		color: var(--color-text-primary);
+		transition: var(--theme-transition);
 	}
 
 	/* Focus visible for accessibility */
 	:focus-visible {
-		@apply outline-none ring-2 ring-chds-blue ring-offset-2;
+		outline: none;
+		box-shadow: 0 0 0 2px var(--color-focus-ring);
+	}
+
+	/* Links */
+	a {
+		color: var(--color-link);
+		transition: color var(--duration-fast) var(--ease-out);
+	}
+
+	a:hover {
+		color: var(--color-link-hover);
+	}
+
+	/* Headings - CHDS theme uses serif */
+	[data-theme='chds'] h1,
+	[data-theme='chds'] h2,
+	[data-theme='chds'] h3,
+	[data-theme='chds'] h4,
+	[data-theme='chds'] h5,
+	[data-theme='chds'] h6 {
+		font-family: var(--font-serif);
+		color: var(--color-primary-600);
+	}
+
+	[data-theme='chds'].dark h1,
+	[data-theme='chds'].dark h2,
+	[data-theme='chds'].dark h3,
+	[data-theme='chds'].dark h4,
+	[data-theme='chds'].dark h5,
+	[data-theme='chds'].dark h6 {
+		color: var(--color-primary-200);
+	}
+
+	/* Developer theme - monospace for code blocks */
+	[data-theme='developer'] code,
+	[data-theme='developer'] pre,
+	[data-theme='developer'] kbd {
+		font-family: var(--font-mono);
 	}
 
 	/* Reduced motion */
@@ -72,72 +407,142 @@
 	}
 }
 
-/* Component styles */
+/* =============================================================================
+   COMPONENT STYLES
+   ============================================================================= */
+
 @layer components {
 	/* Skeleton loading animation */
 	.skeleton {
-		@apply bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200;
+		background: linear-gradient(
+			90deg,
+			var(--color-gray-200) 0%,
+			var(--color-gray-100) 50%,
+			var(--color-gray-200) 100%
+		);
 		background-size: 200% 100%;
 		animation: skeleton-pulse 1.5s ease-in-out infinite;
 	}
 
+	@keyframes skeleton-pulse {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
+	}
+
 	/* Card base */
 	.card {
-		@apply bg-white rounded-lg shadow-sm border border-gray-200;
-		@apply dark:bg-[#16213e] dark:border-gray-700;
+		background-color: var(--color-surface-elevated);
+		border-radius: var(--radius-lg);
+		box-shadow:
+			0 1px 3px 0 rgb(0 0 0 / 0.1),
+			0 1px 2px -1px rgb(0 0 0 / 0.1);
+		border: 1px solid var(--color-border);
+		transition: var(--theme-transition);
 	}
 
 	/* Button variants */
 	.btn {
-		@apply inline-flex items-center justify-center gap-2;
-		@apply px-4 py-2 rounded font-medium;
-		@apply transition-colors duration-150;
-		@apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem;
+		border-radius: var(--radius-md);
+		font-weight: 500;
+		transition:
+			background-color var(--duration-fast) var(--ease-out),
+			color var(--duration-fast) var(--ease-out),
+			box-shadow var(--duration-fast) var(--ease-out);
+	}
+
+	.btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 2px var(--color-focus-ring);
 	}
 
 	.btn-primary {
-		@apply bg-chds-blue text-white;
-		@apply hover:bg-blue-700;
-		@apply focus-visible:ring-chds-blue;
+		background-color: var(--color-interactive);
+		color: var(--color-text-inverse);
+	}
+
+	.btn-primary:hover {
+		background-color: var(--color-interactive-hover);
 	}
 
 	.btn-secondary {
-		@apply bg-gray-100 text-gray-700;
-		@apply hover:bg-gray-200;
-		@apply dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
+		background-color: var(--color-gray-100);
+		color: var(--color-text-primary);
+	}
+
+	.btn-secondary:hover {
+		background-color: var(--color-gray-200);
 	}
 
 	.btn-outline {
-		@apply border border-gray-300 bg-transparent text-gray-700;
-		@apply hover:bg-gray-50;
-		@apply dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800;
+		background-color: transparent;
+		border: 1px solid var(--color-border);
+		color: var(--color-text-primary);
+	}
+
+	.btn-outline:hover {
+		background-color: var(--color-gray-100);
 	}
 
 	/* Input styles */
 	.input {
-		@apply w-full px-3 py-2 rounded border border-gray-300;
-		@apply bg-white text-gray-900;
-		@apply placeholder:text-gray-400;
-		@apply focus:outline-none focus:ring-2 focus:ring-chds-blue focus:border-transparent;
-		@apply dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100;
+		width: 100%;
+		padding: 0.5rem 0.75rem;
+		border-radius: var(--radius-md);
+		border: 1px solid var(--color-border);
+		background-color: var(--color-surface-elevated);
+		color: var(--color-text-primary);
+		transition: var(--theme-transition);
+	}
+
+	.input::placeholder {
+		color: var(--color-text-tertiary);
+	}
+
+	.input:focus {
+		outline: none;
+		border-color: var(--color-interactive);
+		box-shadow: 0 0 0 2px var(--color-interactive) / 0.2;
 	}
 
 	/* Badge styles */
 	.badge {
-		@apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+		display: inline-flex;
+		align-items: center;
+		padding: 0.125rem 0.5rem;
+		border-radius: var(--radius-full);
+		font-size: 0.75rem;
+		font-weight: 500;
 	}
 
 	.badge-primary {
-		@apply bg-chds-blue/10 text-chds-blue;
+		background-color: var(--color-interactive);
+		color: var(--color-text-inverse);
 	}
 
 	.badge-secondary {
-		@apply bg-gray-100 text-gray-700;
-		@apply dark:bg-gray-700 dark:text-gray-300;
+		background-color: var(--color-gray-200);
+		color: var(--color-text-primary);
+	}
+
+	.badge-accent {
+		background-color: var(--color-accent-500);
+		color: var(--color-primary-900);
 	}
 }
 
-/* Utility styles */
+/* =============================================================================
+   UTILITY STYLES
+   ============================================================================= */
+
 @layer utilities {
 	/* Touch target minimum */
 	.touch-target {
@@ -145,16 +550,69 @@
 		min-width: 44px;
 	}
 
+	/* Theme-aware backgrounds */
+	.bg-surface {
+		background-color: var(--color-surface);
+	}
+
+	.bg-surface-elevated {
+		background-color: var(--color-surface-elevated);
+	}
+
+	.bg-surface-secondary {
+		background-color: var(--color-surface-secondary);
+	}
+
+	/* Theme-aware text */
+	.text-primary {
+		color: var(--color-text-primary);
+	}
+
+	.text-secondary {
+		color: var(--color-text-secondary);
+	}
+
+	.text-tertiary {
+		color: var(--color-text-tertiary);
+	}
+
+	/* Theme-aware borders */
+	.border-theme {
+		border-color: var(--color-border);
+	}
+
+	.border-theme-strong {
+		border-color: var(--color-border-strong);
+	}
+
 	/* Relevance score gradient */
 	.relevance-bar {
-		@apply h-2 rounded-full;
-		background: linear-gradient(
-			to right,
-			#ef4444 0%,
-			#f59e0b 25%,
-			#eab308 50%,
-			#84cc16 75%,
-			#22c55e 100%
-		);
+		height: 0.5rem;
+		border-radius: var(--radius-full);
+		background: linear-gradient(to right, #ef4444 0%, #f59e0b 25%, #eab308 50%, #84cc16 75%, #22c55e 100%);
 	}
+
+	/* Header specific styling */
+	.header-bg {
+		background-color: var(--color-header-bg);
+	}
+
+	.header-text {
+		color: var(--color-header-text);
+	}
+
+	.header-accent {
+		color: var(--color-header-accent);
+	}
+}
+
+/* =============================================================================
+   FONT DEFINITIONS
+   ============================================================================= */
+
+/* Berkeley Mono (for developer theme) - self-hosted or use fallback */
+@font-face {
+	font-family: 'Berkeley Mono';
+	src: local('Berkeley Mono');
+	font-display: swap;
 }

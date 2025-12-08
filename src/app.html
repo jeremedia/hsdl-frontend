@@ -3,7 +3,44 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="color-scheme" content="light dark" />
 		%sveltekit.head%
+		<!-- Theme initialization script to prevent FOUC (Flash of Unstyled Content) -->
+		<script>
+			(function () {
+				const STORAGE_KEY_THEME = 'hsdl-theme';
+				const STORAGE_KEY_COLOR_MODE = 'hsdl-color-mode';
+
+				// Get saved preferences
+				const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
+				const savedColorMode = localStorage.getItem(STORAGE_KEY_COLOR_MODE);
+
+				// Determine theme (default to 'chds')
+				const theme = savedTheme && ['chds', 'developer'].includes(savedTheme) ? savedTheme : 'chds';
+
+				// Determine color mode
+				const colorMode =
+					savedColorMode && ['light', 'dark', 'auto'].includes(savedColorMode)
+						? savedColorMode
+						: 'auto';
+
+				// Resolve actual mode for 'auto'
+				let resolvedMode = colorMode;
+				if (colorMode === 'auto') {
+					resolvedMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+						? 'dark'
+						: 'light';
+				}
+
+				// Apply to document immediately
+				document.documentElement.setAttribute('data-theme', theme);
+				document.documentElement.setAttribute('data-color-mode', colorMode);
+
+				if (resolvedMode === 'dark') {
+					document.documentElement.classList.add('dark');
+				}
+			})();
+		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
