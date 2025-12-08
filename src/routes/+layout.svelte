@@ -129,7 +129,7 @@
 			<div class="max-w-7xl mx-auto px-4 py-8">
 				<div class="text-center text-sm text-gray-600 dark:text-gray-400">
 					<p>Homeland Security Digital Library</p>
-					<p class="mt-1">A service of the Naval Postgraduate School</p>
+					<p class="mt-1">A service of the Center for Homeland Defense and Security</p>
 				</div>
 			</div>
 		</footer>
