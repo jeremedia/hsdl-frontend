@@ -56,6 +56,9 @@ export interface SearchResult {
 	per_page: number;
 	total_pages: number;
 	results: Document[];
+	// Performance timing (added by client from headers)
+	serverTimeMs?: number;
+	clientTimeMs?: number;
 }
 
 export interface TaxonomyField {
@@ -169,16 +172,33 @@ class ApiClient {
 		if (params.page) searchParams.set('page', String(params.page));
 		if (params.per_page) searchParams.set('per_page', String(params.per_page));
 
-		// Time the search request
+		// Time the search request (client-side)
 		const startTime = performance.now();
-		const result = await this.fetch<SearchResult>(`/search?${searchParams.toString()}`);
-		const duration = performance.now() - startTime;
+		const url = `${this.baseUrl}/search?${searchParams.toString()}`;
+		const response = await fetch(url, {
+			headers: { 'Content-Type': 'application/json' }
+		});
+		const clientTimeMs = performance.now() - startTime;
+
+		if (!response.ok) {
+			throw new Error(`API error: ${response.status} ${response.statusText}`);
+		}
+
+		// Capture Rails x-runtime header (in seconds, convert to ms)
+		const xRuntime = response.headers.get('x-runtime');
+		const serverTimeMs = xRuntime ? parseFloat(xRuntime) * 1000 : undefined;
+
+		const result: SearchResult = await response.json();
+
+		// Add timing info to result
+		result.serverTimeMs = serverTimeMs;
+		result.clientTimeMs = clientTimeMs;
 
 		// Record timing for Speed dashboard
 		recordSearchTiming({
 			query: params.q,
 			mode: params.mode || 'semantic',
-			duration,
+			duration: clientTimeMs,
 			resultCount: result.total_count
 		});
 

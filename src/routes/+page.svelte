@@ -16,8 +16,9 @@
 	<!-- Hero Section -->
 	<section class="flex-1 flex items-center justify-center bg-gradient-to-b from-chds-navy to-blue-900 text-white px-4 py-16">
 		<div class="max-w-3xl w-full text-center">
-			<h1 class="text-4xl md:text-5xl font-bold mb-4">
-				Homeland Security Digital Library
+			<h1 class="text-4xl md:text-5xl font-bold mb-4 !text-white">
+				<span class="whitespace-nowrap">Homeland Security</span>{' '}
+				<span class="whitespace-nowrap">Digital Library</span>
 			</h1>
 			<p class="text-lg md:text-xl text-blue-100 mb-8">
 				Search over 70,000 documents on homeland security policy, strategy, and research
@@ -30,7 +31,7 @@
 						type="text"
 						bind:value={searchQuery}
 						placeholder="Search documents..."
-						class="w-full px-6 py-4 pr-14 text-lg rounded-full text-gray-900 placeholder:text-gray-500 shadow-xl focus:outline-none focus:ring-4 focus:ring-chds-yellow"
+						class="w-full px-6 py-4 pr-14 text-lg rounded-full text-text-theme-primary placeholder:text-text-theme-tertiary shadow-xl focus:outline-none focus:ring-4 focus:ring-chds-yellow"
 					/>
 					<button
 						type="submit"
@@ -44,16 +45,16 @@
 
 			<!-- Quick Links -->
 			<div class="mt-8 flex flex-wrap justify-center gap-3">
-				<a href="/search?q=cybersecurity&mode=semantic" class="badge bg-white/20 text-white hover:bg-white/30 transition-colors px-4 py-2 rounded-full text-sm">
+				<a href="/search?q=cybersecurity&mode=semantic" class="badge bg-surface-elevated/20 text-white hover:bg-surface-elevated/30 transition-colors px-4 py-2 rounded-full text-sm">
 					Cybersecurity
 				</a>
-				<a href="/search?q=terrorism&mode=semantic" class="badge bg-white/20 text-white hover:bg-white/30 transition-colors px-4 py-2 rounded-full text-sm">
+				<a href="/search?q=terrorism&mode=semantic" class="badge bg-surface-elevated/20 text-white hover:bg-surface-elevated/30 transition-colors px-4 py-2 rounded-full text-sm">
 					Terrorism
 				</a>
-				<a href="/search?q=emergency+management&mode=semantic" class="badge bg-white/20 text-white hover:bg-white/30 transition-colors px-4 py-2 rounded-full text-sm">
+				<a href="/search?q=emergency+management&mode=semantic" class="badge bg-surface-elevated/20 text-white hover:bg-surface-elevated/30 transition-colors px-4 py-2 rounded-full text-sm">
 					Emergency Management
 				</a>
-				<a href="/search?q=border+security&mode=semantic" class="badge bg-white/20 text-white hover:bg-white/30 transition-colors px-4 py-2 rounded-full text-sm">
+				<a href="/search?q=border+security&mode=semantic" class="badge bg-surface-elevated/20 text-white hover:bg-surface-elevated/30 transition-colors px-4 py-2 rounded-full text-sm">
 					Border Security
 				</a>
 			</div>
@@ -61,9 +62,9 @@
 	</section>
 
 	<!-- Features Section -->
-	<section class="py-16 px-4 bg-white dark:bg-gray-900">
+	<section class="py-16 px-4 bg-surface-elevated">
 		<div class="max-w-6xl mx-auto">
-			<h2 class="text-2xl font-bold text-center mb-12 text-gray-900 dark:text-white">
+			<h2 class="text-2xl font-bold text-center mb-12 text-text-theme-primary dark:text-white">
 				Discover Research
 			</h2>
 
@@ -74,7 +75,7 @@
 						<Search class="w-6 h-6 text-chds-blue" />
 					</div>
 					<h3 class="font-semibold text-lg mb-2">Semantic Search</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-text-theme-secondary dark:text-text-theme-tertiary">
 						Find documents by meaning, not just keywords. Our AI-powered search understands your research intent.
 					</p>
 				</div>
@@ -87,7 +88,7 @@
 						</svg>
 					</div>
 					<h3 class="font-semibold text-lg mb-2">Browse by Topic</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-text-theme-secondary dark:text-text-theme-tertiary">
 						Explore documents organized by subject area, document type, and organization.
 					</p>
 				</div>
@@ -100,7 +101,7 @@
 						</svg>
 					</div>
 					<h3 class="font-semibold text-lg mb-2">AI Assistant</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-text-theme-secondary dark:text-text-theme-tertiary">
 						Ask questions in natural language and get intelligent answers from our document collection.
 					</p>
 				</div>

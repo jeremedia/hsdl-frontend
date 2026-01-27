@@ -74,7 +74,7 @@
 
 	<!-- Drawer -->
 	<div
-		class="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col transform transition-transform duration-300 ease-out"
+		class="fixed inset-x-0 bottom-0 z-50 bg-surface-elevated rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col transform transition-transform duration-300 ease-out"
 		class:translate-y-0={open}
 		class:translate-y-full={!open}
 		role="dialog"
@@ -83,13 +83,13 @@
 	>
 		<!-- Handle bar -->
 		<div class="flex justify-center pt-3 pb-1">
-			<div class="w-10 h-1 bg-gray-300 rounded-full"></div>
+			<div class="w-10 h-1 bg-surface-secondary rounded-full"></div>
 		</div>
 
 		<!-- Header -->
-		<div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+		<div class="flex items-center justify-between px-4 py-3 border-b border-border-theme">
 			<div class="flex items-center gap-2">
-				<h2 class="text-lg font-semibold text-gray-900">Filters</h2>
+				<h2 class="text-lg font-semibold text-text-theme-primary">Filters</h2>
 				{#if getActiveFilterCount() > 0}
 					<span class="bg-chds-blue text-white text-xs font-medium px-2 py-0.5 rounded-full">
 						{getActiveFilterCount()}
@@ -98,7 +98,7 @@
 			</div>
 			<button
 				onclick={onClose}
-				class="p-2 -mr-2 text-gray-500 hover:text-gray-700 transition-colors"
+				class="p-2 -mr-2 text-text-theme-tertiary hover:text-text-theme-secondary transition-colors"
 				aria-label="Close filters"
 			>
 				<X class="w-5 h-5" />
@@ -122,10 +122,10 @@
 		</div>
 
 		<!-- Footer -->
-		<div class="border-t border-gray-200 px-4 py-3 bg-gray-50 flex gap-3">
+		<div class="border-t border-border-theme px-4 py-3 bg-surface-secondary flex gap-3">
 			<button
 				onclick={onClearAll}
-				class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+				class="flex-1 px-4 py-2.5 text-sm font-medium text-text-theme-secondary bg-surface-elevated border border-border-theme rounded-lg hover:bg-surface-secondary transition-colors"
 			>
 				Clear All
 			</button>

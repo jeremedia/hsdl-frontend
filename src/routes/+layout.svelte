@@ -42,10 +42,10 @@
 
 					<!-- Desktop Nav -->
 					<nav class="hidden md:flex items-center gap-6">
-						<a href="/search" class="hover:opacity-80 transition-opacity">Search</a>
-						<a href="/browse" class="hover:opacity-80 transition-opacity">Browse</a>
-						<a href="/chat" class="hover:opacity-80 transition-opacity">AI Assistant</a>
-						<a href="/speed" class="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+						<a href="/search" class="text-white hover:text-white/80 transition-colors">Search</a>
+						<a href="/browse" class="text-white hover:text-white/80 transition-colors">Browse</a>
+						<a href="/chat" class="text-white hover:text-white/80 transition-colors">AI Assistant</a>
+						<a href="/speed" class="flex items-center gap-1.5 text-white hover:text-white/80 transition-colors">
 							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path
 									stroke-linecap="round"
@@ -55,7 +55,7 @@
 								/>
 							</svg>
 							Speed
-							<span class="px-1 py-0.5 text-[10px] font-bold bg-amber-400 text-amber-900 rounded"
+							<span class="px-1.5 py-0.5 text-[10px] font-bold bg-[#FCB900] text-[#002B58]"
 								>DEV</span
 							>
 						</a>
@@ -98,28 +98,28 @@
 					<nav class="md:hidden py-4 border-t border-white/20">
 						<a
 							href="/search"
-							class="block py-2 hover:opacity-80"
+							class="block py-2 text-white hover:text-white/80 transition-colors"
 							onclick={() => (mobileMenuOpen = false)}
 						>
 							Search
 						</a>
 						<a
 							href="/browse"
-							class="block py-2 hover:opacity-80"
+							class="block py-2 text-white hover:text-white/80 transition-colors"
 							onclick={() => (mobileMenuOpen = false)}
 						>
 							Browse
 						</a>
 						<a
 							href="/chat"
-							class="block py-2 hover:opacity-80"
+							class="block py-2 text-white hover:text-white/80 transition-colors"
 							onclick={() => (mobileMenuOpen = false)}
 						>
 							AI Assistant
 						</a>
 						<a
 							href="/speed"
-							class="flex items-center gap-2 py-2 hover:opacity-80"
+							class="flex items-center gap-2 py-2 text-white hover:text-white/80 transition-colors"
 							onclick={() => (mobileMenuOpen = false)}
 						>
 							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,7 +131,7 @@
 								/>
 							</svg>
 							Speed
-							<span class="px-1 py-0.5 text-[10px] font-bold bg-amber-400 text-amber-900 rounded"
+							<span class="px-1.5 py-0.5 text-[10px] font-bold bg-[#FCB900] text-[#002B58]"
 								>DEV</span
 							>
 						</a>

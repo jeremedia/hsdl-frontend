@@ -97,14 +97,14 @@
 
 {#if activeFilters.length > 0}
 	<div class="flex flex-wrap items-center gap-2 mb-4">
-		<span class="text-sm text-gray-500">Filters:</span>
+		<span class="text-sm text-text-theme-tertiary">Filters:</span>
 
 		{#each activeFilters as filter}
 			<span
 				class="inline-flex items-center gap-1 px-2.5 py-1 text-sm bg-chds-blue/10 text-chds-navy rounded-full"
 			>
 				{#if filter.fieldName}
-					<span class="text-gray-500">{filter.fieldName}:</span>
+					<span class="text-text-theme-tertiary">{filter.fieldName}:</span>
 				{/if}
 				<span class="font-medium truncate max-w-[150px]" title={filter.label}>
 					{filter.label}

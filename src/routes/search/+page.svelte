@@ -28,14 +28,29 @@
 	);
 	let sort = $derived($page.url.searchParams.get('sort') || 'relevance');
 
-	// Parse terms from URL (comma-separated)
-	let selectedTerms = $derived(() => {
+	// Parse terms from URL (comma-separated) - memoized to prevent unnecessary re-renders
+	let selectedTermsValue = $derived.by(() => {
 		const termsParam = $page.url.searchParams.get('terms');
 		return termsParam ? termsParam.split(',').filter(Boolean) : [];
 	});
+	// Stable reference for TanStack Query
+	let selectedTerms = () => selectedTermsValue;
 
 	// Mobile filter drawer state
 	let showMobileFilters = $state(false);
+
+	// Local search input state (separate from URL-derived query)
+	let searchInput = $state(query);
+	$effect(() => {
+		searchInput = query;
+	});
+
+	function handleSearchSubmit(e: Event) {
+		e.preventDefault();
+		if (searchInput.trim()) {
+			goto(buildUrl({ q: searchInput.trim(), page: '1' }));
+		}
+	}
 
 	// Search query - runs in parallel with facets
 	const searchQuery = createQuery({
@@ -151,7 +166,7 @@
 	}
 
 	function getRelevanceColor(score: number | undefined): string {
-		if (score === undefined) return 'bg-gray-300';
+		if (score === undefined) return 'bg-surface-secondary';
 		if (score >= 0.8) return 'bg-green-500';
 		if (score >= 0.6) return 'bg-lime-500';
 		if (score >= 0.4) return 'bg-yellow-500';
@@ -198,18 +213,16 @@
 <div class="max-w-7xl mx-auto px-4 py-6 sm:py-8">
 	<!-- Search Header -->
 	<div class="mb-6">
-		<form action="/search" method="GET" class="flex gap-2">
+		<form onsubmit={handleSearchSubmit} class="flex gap-2">
 			<div class="relative flex-1">
 				<input
 					type="text"
-					name="q"
-					value={query}
+					bind:value={searchInput}
 					placeholder="Search documents..."
 					class="input pr-10 text-lg"
 				/>
-				<Search class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+				<Search class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-theme-tertiary" />
 			</div>
-			<input type="hidden" name="mode" value={mode} />
 			<button type="submit" class="btn btn-primary px-6">Search</button>
 		</form>
 
@@ -217,13 +230,13 @@
 		<div class="mt-4 flex flex-wrap items-center justify-between gap-4">
 			<!-- Mode toggle -->
 			<div class="flex items-center gap-2">
-				<span class="text-sm text-gray-500">Mode:</span>
+				<span class="text-sm text-text-theme-tertiary">Mode:</span>
 				<div class="flex gap-1">
 					<a
 						href={buildUrl({ mode: 'semantic', page: '1' })}
 						class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {mode === 'semantic'
 							? 'bg-chds-blue text-white'
-							: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+							: 'bg-surface-secondary text-text-theme-secondary hover:bg-surface-secondary'}"
 					>
 						Semantic
 					</a>
@@ -231,7 +244,7 @@
 						href={buildUrl({ mode: 'keyword', page: '1' })}
 						class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {mode === 'keyword'
 							? 'bg-chds-blue text-white'
-							: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+							: 'bg-surface-secondary text-text-theme-secondary hover:bg-surface-secondary'}"
 					>
 						Keyword
 					</a>
@@ -242,9 +255,11 @@
 			<div class="flex items-center gap-2">
 				<!-- Sort -->
 				<div class="flex items-center gap-1">
-					<ArrowUpDown class="w-4 h-4 text-gray-400" />
+					<label for="sort-select" class="sr-only">Sort results by</label>
+					<ArrowUpDown class="w-4 h-4 text-text-theme-tertiary" aria-hidden="true" />
 					<select
-						class="text-sm border-0 bg-transparent text-gray-600 cursor-pointer focus:ring-0"
+						id="sort-select"
+						class="text-sm border-0 bg-transparent text-text-theme-secondary cursor-pointer focus:ring-0"
 						onchange={(e) => goto(buildUrl({ sort: e.currentTarget.value, page: '1' }))}
 					>
 						<option value="relevance" selected={sort === 'relevance'}>Relevance</option>
@@ -258,14 +273,14 @@
 					onclick={() => (showMobileFilters = true)}
 					class="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {hasActiveFilters()
 						? 'bg-chds-blue text-white'
-						: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+						: 'bg-surface-secondary text-text-theme-secondary hover:bg-surface-secondary'}"
 				>
 					<SlidersHorizontal class="w-4 h-4" />
 					Filters
 					{#if getActiveFilterCount() > 0}
 						<span
 							class="w-5 h-5 flex items-center justify-center rounded-full text-xs {hasActiveFilters()
-								? 'bg-white text-chds-blue'
+								? 'bg-surface-elevated text-chds-blue'
 								: 'bg-chds-blue text-white'}"
 						>
 							{getActiveFilterCount()}
@@ -278,7 +293,7 @@
 
 	<!-- Main Content with Sidebar -->
 	{#if !query}
-		<div class="text-center py-16 text-gray-500">
+		<div class="text-center py-16 text-text-theme-tertiary">
 			<Search class="w-16 h-16 mx-auto mb-4 opacity-50" />
 			<p class="text-lg">Enter a search query to find documents</p>
 			<p class="text-sm mt-2">
@@ -289,7 +304,7 @@
 		<div class="flex gap-6">
 			<!-- Desktop Sidebar -->
 			<div class="hidden lg:block w-72 flex-shrink-0">
-				<div class="sticky top-4 max-h-[calc(100vh-8rem)] overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+				<div class="sticky top-4 max-h-[calc(100vh-8rem)] overflow-hidden rounded-xl border border-border-theme shadow-sm">
 					<FacetSidebar
 						facets={$facetsQuery.data ?? null}
 						selectedTerms={selectedTerms()}
@@ -340,15 +355,22 @@
 				{:else if $searchQuery.data}
 					{@const data = $searchQuery.data}
 
-					<!-- Results Count -->
-					<div class="mb-4 flex items-center justify-between">
-						<p class="text-sm text-gray-600">
-							Found <span class="font-semibold">{data.total_count.toLocaleString()}</span> results
-							for
-							<span class="font-medium">"{data.query}"</span>
-						</p>
+					<!-- Results Count with ARIA live region for screen readers -->
+					<div class="mb-4 flex items-center justify-between" role="status" aria-live="polite" aria-atomic="true">
+						<div class="flex items-center gap-3">
+							<p class="text-sm text-text-theme-secondary">
+								Found <span class="font-semibold">{data.total_count.toLocaleString()}</span> results
+								for
+								<span class="font-medium">"{data.query}"</span>
+							</p>
+							{#if data.serverTimeMs}
+								<span class="text-xs text-text-theme-tertiary" title="Server: {data.serverTimeMs?.toFixed(0)}ms, Network: {((data.clientTimeMs || 0) - (data.serverTimeMs || 0)).toFixed(0)}ms">
+									({data.serverTimeMs.toFixed(0)}ms)
+								</span>
+							{/if}
+						</div>
 						{#if data.total_pages > 1}
-							<p class="text-sm text-gray-500">
+							<p class="text-sm text-text-theme-tertiary">
 								Page {data.page} of {data.total_pages.toLocaleString()}
 							</p>
 						{/if}
@@ -356,7 +378,7 @@
 
 					<!-- Results List -->
 					{#if data.results.length === 0}
-						<div class="text-center py-12 text-gray-500">
+						<div class="text-center py-12 text-text-theme-tertiary">
 							<Search class="w-12 h-12 mx-auto mb-3 opacity-50" />
 							<p>No documents match your search criteria</p>
 							{#if hasActiveFilters()}
@@ -376,20 +398,20 @@
 										<div class="flex-1 min-w-0">
 											<a href="/doc/{doc.id}" class="group">
 												<h2
-													class="font-semibold text-lg text-gray-900 group-hover:text-chds-blue transition-colors line-clamp-2"
+													class="font-semibold text-lg text-text-theme-primary group-hover:text-chds-blue transition-colors line-clamp-2"
 												>
 													{doc.title}
 												</h2>
 											</a>
 
 											{#if doc.description}
-												<p class="mt-2 text-gray-600 line-clamp-2 text-sm">
+												<p class="mt-2 text-text-theme-secondary line-clamp-2 text-sm">
 													{doc.description}
 												</p>
 											{/if}
 
 											<div
-												class="mt-3 flex flex-wrap items-center gap-3 text-sm text-gray-500"
+												class="mt-3 flex flex-wrap items-center gap-3 text-sm text-text-theme-tertiary"
 											>
 												{#if doc.publish_year}
 													<span class="flex items-center gap-1">
@@ -420,10 +442,10 @@
 										<!-- Relevance score (for semantic search) -->
 										{#if doc.relevance_score !== undefined}
 											<div class="flex-shrink-0 w-16 text-right">
-												<div class="text-sm font-semibold text-gray-700">
+												<div class="text-sm font-semibold text-text-theme-secondary">
 													{Math.round(doc.relevance_score * 100)}%
 												</div>
-												<div class="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+												<div class="mt-1 h-1.5 bg-surface-secondary rounded-full overflow-hidden">
 													<div
 														class="h-full {getRelevanceColor(
 															doc.relevance_score
@@ -431,7 +453,7 @@
 														style="width: {getRelevanceWidth(doc.relevance_score)}"
 													></div>
 												</div>
-												<div class="text-xs text-gray-400 mt-0.5">match</div>
+												<div class="text-xs text-text-theme-tertiary mt-0.5">match</div>
 											</div>
 										{/if}
 									</div>
@@ -446,8 +468,8 @@
 								<a
 									href={data.page > 1 ? buildUrl({ page: (data.page - 1).toString() }) : '#'}
 									class="p-2 rounded-lg {data.page > 1
-										? 'hover:bg-gray-100 text-gray-600'
-										: 'text-gray-300 cursor-not-allowed'}"
+										? 'hover:bg-surface-secondary text-text-theme-secondary'
+										: 'text-text-theme-tertiary cursor-not-allowed'}"
 									aria-disabled={data.page <= 1}
 								>
 									<ChevronLeft class="w-5 h-5" />
@@ -456,13 +478,13 @@
 								<!-- Page numbers -->
 								{#each getPageNumbers(data.page, data.total_pages) as pageNum}
 									{#if pageNum === '...'}
-										<span class="px-2 text-gray-400">...</span>
+										<span class="px-2 text-text-theme-tertiary">...</span>
 									{:else}
 										<a
 											href={buildUrl({ page: pageNum.toString() })}
 											class="px-3 py-1.5 rounded-lg text-sm font-medium {pageNum === data.page
 												? 'bg-chds-blue text-white'
-												: 'hover:bg-gray-100 text-gray-600'}"
+												: 'hover:bg-surface-secondary text-text-theme-secondary'}"
 										>
 											{pageNum}
 										</a>
@@ -475,8 +497,8 @@
 										? buildUrl({ page: (data.page + 1).toString() })
 										: '#'}
 									class="p-2 rounded-lg {data.page < data.total_pages
-										? 'hover:bg-gray-100 text-gray-600'
-										: 'text-gray-300 cursor-not-allowed'}"
+										? 'hover:bg-surface-secondary text-text-theme-secondary'
+										: 'text-text-theme-tertiary cursor-not-allowed'}"
 									aria-disabled={data.page >= data.total_pages}
 								>
 									<ChevronRight class="w-5 h-5" />

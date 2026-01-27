@@ -82,7 +82,7 @@
 
 <div class="max-w-5xl mx-auto px-4 py-6 sm:py-8">
 	<!-- Back navigation -->
-	<a href="javascript:history.back()" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-chds-blue transition-colors mb-6 group">
+	<a href="javascript:history.back()" class="inline-flex items-center gap-1.5 text-sm text-text-theme-tertiary hover:text-chds-blue transition-colors mb-6 group">
 		<ChevronLeft class="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
 		Back to results
 	</a>
@@ -101,7 +101,7 @@
 				<FileText class="w-8 h-8 text-red-400" />
 			</div>
 			<p class="text-red-600 font-medium mb-2">Unable to load document</p>
-			<p class="text-gray-500 text-sm mb-6">{$docQuery.error.message}</p>
+			<p class="text-text-theme-tertiary text-sm mb-6">{$docQuery.error.message}</p>
 			<a href="/" class="btn btn-primary">Return Home</a>
 		</div>
 	{:else if $docQuery.data}
@@ -117,13 +117,13 @@
 							CHDS Thesis
 						</span>
 					{:else if doc.is_thesis}
-						<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white">
+						<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-surface-elevated/20 text-white">
 							<BookOpen class="w-3.5 h-3.5" />
 							Thesis
 						</span>
 					{/if}
 					{#if doc.access_level}
-						<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white/90 backdrop-blur-sm">
+						<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-surface-elevated/10 text-white/90 backdrop-blur-sm">
 							{doc.access_level}
 						</span>
 					{/if}
@@ -138,30 +138,30 @@
 					</h1>
 
 					{#if doc.alternate_title}
-						<p class="mt-3 text-lg text-gray-500 italic">{doc.alternate_title}</p>
+						<p class="mt-3 text-lg text-text-theme-tertiary italic">{doc.alternate_title}</p>
 					{/if}
 				</header>
 
 				<!-- Meta info bar - more prominent -->
-				<div class="flex flex-wrap items-center gap-3 sm:gap-4 text-sm mb-6 pb-6 border-b border-gray-100">
+				<div class="flex flex-wrap items-center gap-3 sm:gap-4 text-sm mb-6 pb-6 border-b border-border-theme">
 					{#if doc.publish_date}
-						<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 text-gray-700 font-medium">
+						<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-secondary text-text-theme-secondary font-medium">
 							<Calendar class="w-4 h-4 text-chds-blue" />
 							{formatDate(doc.publish_date)}
 						</span>
 					{/if}
 					{#if doc.file_extension}
-						<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 text-gray-700">
-							<FileText class="w-4 h-4 text-gray-400" />
+						<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-secondary text-text-theme-secondary">
+							<FileText class="w-4 h-4 text-text-theme-tertiary" />
 							<span class="font-medium">{doc.file_extension.toUpperCase().replace('.', '')}</span>
 							{#if doc.file_size}
-								<span class="text-gray-400">({formatFileSize(doc.file_size)})</span>
+								<span class="text-text-theme-tertiary">({formatFileSize(doc.file_size)})</span>
 							{/if}
 						</span>
 					{/if}
 					{#if doc.report_number}
-						<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600">
-							<Hash class="w-4 h-4 text-gray-400" />
+						<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-secondary text-text-theme-secondary">
+							<Hash class="w-4 h-4 text-text-theme-tertiary" />
 							{doc.report_number}
 						</span>
 					{/if}
@@ -185,7 +185,7 @@
 							href={doc.url}
 							target="_blank"
 							rel="noopener"
-							class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-chds-navy bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-all duration-200"
+							class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-chds-navy bg-surface-secondary hover:bg-surface-secondary border border-border-theme transition-all duration-200"
 						>
 							<ExternalLink class="w-5 h-5" />
 							View Source
@@ -196,12 +196,12 @@
 			<!-- Description -->
 			{#if doc.description}
 				<section class="mb-8">
-					<h2 class="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+					<h2 class="text-base font-semibold text-text-theme-primary mb-3 flex items-center gap-2">
 						<span class="w-1 h-5 bg-chds-blue rounded-full"></span>
 						Description
 					</h2>
 					<div class="prose prose-gray max-w-none">
-						<p class="text-gray-600 leading-relaxed whitespace-pre-line">{doc.description}</p>
+						<p class="text-text-theme-secondary leading-relaxed whitespace-pre-line">{doc.description}</p>
 					</div>
 				</section>
 			{/if}
@@ -215,31 +215,31 @@
 						</span>
 						AI Summary
 					</h2>
-					<p class="text-gray-700 leading-relaxed">{doc.summary}</p>
+					<p class="text-text-theme-secondary leading-relaxed">{doc.summary}</p>
 				</section>
 			{/if}
 
 			<!-- Taxonomy (grouped metadata) -->
 			{#if Object.keys(doc.taxonomy).length > 0}
 				<section class="mb-8">
-					<h2 class="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+					<h2 class="text-base font-semibold text-text-theme-primary mb-4 flex items-center gap-2">
 						<span class="w-1 h-5 bg-chds-blue rounded-full"></span>
 						Metadata
 					</h2>
-					<div class="bg-gray-50/50 rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
+					<div class="bg-surface-secondary/50 rounded-xl border border-border-theme overflow-hidden divide-y divide-border-theme">
 						{#each Object.entries(doc.taxonomy) as [field, terms], i}
 							{@const IconComponent = fieldIcons[field] || Tag}
-							<div class="px-4 py-3 sm:px-5 sm:py-4 hover:bg-gray-50/80 transition-colors">
+							<div class="px-4 py-3 sm:px-5 sm:py-4 hover:bg-surface-secondary/80 transition-colors">
 								<div class="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
 									<div class="flex items-center gap-2 sm:w-40 flex-shrink-0">
-										<IconComponent class="w-4 h-4 text-gray-400" />
-										<h3 class="text-sm font-medium text-gray-500">{field}</h3>
+										<IconComponent class="w-4 h-4 text-text-theme-tertiary" />
+										<h3 class="text-sm font-medium text-text-theme-tertiary">{field}</h3>
 									</div>
 									<div class="flex flex-wrap gap-1.5 flex-1">
 										{#each terms as term}
 											<a
 												href="/search?q={encodeURIComponent(term.name)}&mode=keyword"
-												class="inline-flex items-center px-2.5 py-1 rounded-md text-sm bg-white border border-gray-200 text-gray-700 hover:border-chds-blue hover:text-chds-blue transition-colors shadow-sm"
+												class="inline-flex items-center px-2.5 py-1 rounded-md text-sm bg-surface-elevated border border-border-theme text-text-theme-secondary hover:border-chds-blue hover:text-chds-blue transition-colors shadow-sm"
 											>
 												{term.name}
 											</a>
@@ -255,7 +255,7 @@
 			<!-- AI-generated tags -->
 			{#if doc.tags && (doc.tags.keywords?.length || doc.tags.organizations?.length || doc.tags.places?.length)}
 				<section class="mb-8">
-					<h2 class="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+					<h2 class="text-base font-semibold text-text-theme-primary mb-4 flex items-center gap-2">
 						<span class="w-1 h-5 bg-chds-gold rounded-full"></span>
 						<span class="flex items-center gap-2">
 							AI-Generated Tags
@@ -313,8 +313,8 @@
 			{/if}
 
 			<!-- Document info footer -->
-			<footer class="pt-6 mt-2 border-t border-gray-100">
-				<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-400">
+			<footer class="pt-6 mt-2 border-t border-border-theme">
+				<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-text-theme-tertiary">
 					<span class="flex items-center gap-1.5">
 						<Hash class="w-3.5 h-3.5" />
 						HSDL ID: {doc.doc_id}
@@ -338,11 +338,11 @@
 		{#if $similarQuery.data?.similar?.length}
 			<section class="mt-8">
 				<div class="flex items-center justify-between mb-4">
-					<h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+					<h2 class="text-xl font-bold text-text-theme-primary flex items-center gap-2">
 						<span class="w-1.5 h-6 bg-chds-gold rounded-full"></span>
 						Similar Documents
 					</h2>
-					<span class="text-sm text-gray-500">{$similarQuery.data.similar.length} found</span>
+					<span class="text-sm text-text-theme-tertiary">{$similarQuery.data.similar.length} found</span>
 				</div>
 				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
 					{#each $similarQuery.data.similar as similar, i}
@@ -359,18 +359,18 @@
 								>
 									{Math.round((similar.relevance_score || 0) * 100)}%
 								</div>
-								<span class="text-xs text-gray-400 hidden sm:block">similar</span>
+								<span class="text-xs text-text-theme-tertiary hidden sm:block">similar</span>
 							</div>
 
 							<!-- Content -->
 							<div class="flex-1 min-w-0">
-								<h3 class="font-semibold text-gray-900 group-hover:text-chds-blue transition-colors line-clamp-2 mb-2">
+								<h3 class="font-semibold text-text-theme-primary group-hover:text-chds-blue transition-colors line-clamp-2 mb-2">
 									{similar.title}
 								</h3>
 								{#if similar.description}
-									<p class="text-sm text-gray-500 line-clamp-2 mb-3">{similar.description}</p>
+									<p class="text-sm text-text-theme-tertiary line-clamp-2 mb-3">{similar.description}</p>
 								{/if}
-								<div class="flex items-center gap-4 text-xs text-gray-400">
+								<div class="flex items-center gap-4 text-xs text-text-theme-tertiary">
 									{#if similar.publish_year}
 										<span class="flex items-center gap-1">
 											<Calendar class="w-3.5 h-3.5" />

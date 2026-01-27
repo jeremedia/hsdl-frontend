@@ -39,8 +39,19 @@ export interface ResourceTiming {
 const searchTimings: SearchTiming[] = [];
 const MAX_SEARCH_TIMINGS = 50;
 
-// Store search timing
+// Store search timing with defensive validation
 export function recordSearchTiming(timing: Omit<SearchTiming, 'timestamp'>) {
+	// Validate input to prevent invalid data from corrupting stats
+	if (
+		typeof timing.query !== 'string' ||
+		typeof timing.duration !== 'number' ||
+		!Number.isFinite(timing.duration) ||
+		timing.duration < 0
+	) {
+		console.warn('Invalid search timing data:', timing);
+		return;
+	}
+
 	searchTimings.unshift({
 		...timing,
 		timestamp: Date.now()
@@ -55,7 +66,7 @@ export function getSearchTimings(): SearchTiming[] {
 	return [...searchTimings];
 }
 
-// Get search timing stats
+// Get search timing stats with defensive type checking
 export function getSearchStats() {
 	if (searchTimings.length === 0) {
 		return {
@@ -70,19 +81,46 @@ export function getSearchStats() {
 		};
 	}
 
-	const durations = searchTimings.map((t) => t.duration).sort((a, b) => a - b);
-	const semanticDurations = searchTimings.filter((t) => t.mode === 'semantic').map((t) => t.duration);
-	const keywordDurations = searchTimings.filter((t) => t.mode === 'keyword').map((t) => t.duration);
+	// Filter out any invalid entries that might have slipped through
+	const validTimings = searchTimings.filter(
+		(t) => typeof t.duration === 'number' && Number.isFinite(t.duration) && t.duration >= 0
+	);
+
+	if (validTimings.length === 0) {
+		return {
+			count: 0,
+			avgDuration: 0,
+			minDuration: 0,
+			maxDuration: 0,
+			semanticAvg: 0,
+			keywordAvg: 0,
+			p50: 0,
+			p95: 0
+		};
+	}
+
+	const durations = validTimings.map((t) => t.duration).sort((a, b) => a - b);
+	const semanticDurations = validTimings
+		.filter((t) => t.mode === 'semantic')
+		.map((t) => t.duration);
+	const keywordDurations = validTimings
+		.filter((t) => t.mode === 'keyword')
+		.map((t) => t.duration);
 
 	const avg = (arr: number[]) => (arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
 	const percentile = (arr: number[], p: number) => {
 		if (arr.length === 0) return 0;
-		const idx = Math.ceil((p / 100) * arr.length) - 1;
-		return arr[Math.max(0, idx)];
+		// Use linear interpolation for more accurate percentile calculation
+		const idx = (p / 100) * (arr.length - 1);
+		const lower = Math.floor(idx);
+		const upper = Math.ceil(idx);
+		if (lower === upper) return arr[lower];
+		// Linear interpolation between adjacent values
+		return arr[lower] + (arr[upper] - arr[lower]) * (idx - lower);
 	};
 
 	return {
-		count: searchTimings.length,
+		count: validTimings.length,
 		avgDuration: avg(durations),
 		minDuration: Math.min(...durations),
 		maxDuration: Math.max(...durations),

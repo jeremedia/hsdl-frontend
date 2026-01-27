@@ -88,8 +88,10 @@ export default defineConfig({
 		})
 	],
 	server: {
+		host: '0.0.0.0',
 		port: 5173,
-		strictPort: true
+		strictPort: true,
+		allowedHosts: ['hsdl-ui.dev.domt.app', 'localhost']
 	},
 	preview: {
 		port: 4173

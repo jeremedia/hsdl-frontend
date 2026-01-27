@@ -86,7 +86,7 @@
 	<!-- Page Header -->
 	<div class="mb-8">
 		<h1 class="text-2xl sm:text-3xl font-bold text-chds-navy mb-2">Browse Collection</h1>
-		<p class="text-gray-600">Explore documents by category, subject, or region</p>
+		<p class="text-text-theme-secondary">Explore documents by category, subject, or region</p>
 	</div>
 
 	{#if $taxonomyQuery.isPending}
@@ -117,13 +117,13 @@
 		<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
 			<div class="card p-4 text-center">
 				<div class="text-2xl font-bold text-chds-blue">{fields.length}</div>
-				<div class="text-sm text-gray-500">Categories</div>
+				<div class="text-sm text-text-theme-tertiary">Categories</div>
 			</div>
 			<div class="card p-4 text-center">
 				<div class="text-2xl font-bold text-chds-blue">
 					{formatCount(fields.reduce((sum, f) => sum + f.term_count, 0))}
 				</div>
-				<div class="text-sm text-gray-500">Total Terms</div>
+				<div class="text-sm text-text-theme-tertiary">Total Terms</div>
 			</div>
 			<div class="card p-4 text-center col-span-2 sm:col-span-2">
 				<a href="/search" class="flex items-center justify-center gap-2 text-chds-blue hover:text-chds-navy transition-colors">
@@ -144,7 +144,7 @@
 					<!-- Field Header -->
 					<button
 						onclick={() => toggleField(field.id)}
-						class="w-full px-4 py-4 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+						class="w-full px-4 py-4 flex items-center gap-3 hover:bg-surface-secondary transition-colors text-left"
 					>
 						<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-chds-blue/10 text-chds-blue flex-shrink-0">
 							{#if isExpanded}
@@ -154,10 +154,10 @@
 							{/if}
 						</div>
 						<div class="flex-1 min-w-0">
-							<h2 class="font-semibold text-gray-900">{field.name}</h2>
-							<p class="text-sm text-gray-500">{field.term_count} terms</p>
+							<h2 class="font-semibold text-text-theme-primary">{field.name}</h2>
+							<p class="text-sm text-text-theme-tertiary">{field.term_count} terms</p>
 						</div>
-						<div class="flex items-center gap-2 text-gray-400">
+						<div class="flex items-center gap-2 text-text-theme-tertiary">
 							{#if isExpanded}
 								<ChevronDown class="w-5 h-5" />
 							{:else}
@@ -168,22 +168,22 @@
 
 					<!-- Expanded Terms -->
 					{#if isExpanded && topTerms.length > 0}
-						<div class="border-t border-gray-100 px-4 py-3 bg-gray-50/50">
+						<div class="border-t border-border-theme px-4 py-3 bg-surface-secondary/50">
 							<div class="flex flex-wrap gap-2">
 								{#each topTerms as term}
 									<a
 										href="/search?q={encodeURIComponent(term.name)}&mode=keyword"
-										class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-white border border-gray-200 text-gray-700 hover:border-chds-blue hover:text-chds-blue transition-colors shadow-sm"
+										class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm bg-surface-elevated border border-border-theme text-text-theme-secondary hover:border-chds-blue hover:text-chds-blue transition-colors shadow-sm"
 									>
 										<span class="truncate max-w-[200px]">{term.name}</span>
-										<span class="text-xs text-gray-400 font-medium">
+										<span class="text-xs text-text-theme-tertiary font-medium">
 											{formatCount(term.document_count)}
 										</span>
 									</a>
 								{/each}
 							</div>
 							{#if field.terms.filter(t => t.document_count > 0).length > 20}
-								<div class="mt-3 pt-3 border-t border-gray-200">
+								<div class="mt-3 pt-3 border-t border-border-theme">
 									<a
 										href="/browse/{field.id}"
 										class="text-sm text-chds-blue hover:text-chds-navy font-medium"
@@ -202,7 +202,7 @@
 		{@const subjectField = fields.find(f => f.name === 'FAST Subject' || f.name === 'Subject')}
 		{#if subjectField}
 			<section class="mt-10">
-				<h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+				<h2 class="text-xl font-bold text-text-theme-primary mb-4 flex items-center gap-2">
 					<span class="w-1.5 h-6 bg-chds-gold rounded-full"></span>
 					Popular Topics
 				</h2>
@@ -212,10 +212,10 @@
 							href="/search?q={encodeURIComponent(term.name)}&mode=keyword"
 							class="card p-3 hover:shadow-md hover:border-chds-blue/20 transition-all group"
 						>
-							<div class="font-medium text-gray-900 group-hover:text-chds-blue transition-colors line-clamp-2 text-sm">
+							<div class="font-medium text-text-theme-primary group-hover:text-chds-blue transition-colors line-clamp-2 text-sm">
 								{term.name}
 							</div>
-							<div class="text-xs text-gray-400 mt-1">
+							<div class="text-xs text-text-theme-tertiary mt-1">
 								{formatCount(term.document_count)} docs
 							</div>
 						</a>
@@ -228,7 +228,7 @@
 		{@const countryField = fields.find(f => f.name === 'Coverage - Country')}
 		{#if countryField}
 			<section class="mt-10">
-				<h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+				<h2 class="text-xl font-bold text-text-theme-primary mb-4 flex items-center gap-2">
 					<span class="w-1.5 h-6 bg-chds-blue rounded-full"></span>
 					<Globe class="w-5 h-5 text-chds-blue" />
 					Browse by Region
@@ -239,10 +239,10 @@
 							href="/search?q={encodeURIComponent(term.name)}&mode=keyword"
 							class="card p-3 hover:shadow-md hover:border-chds-blue/20 transition-all group"
 						>
-							<div class="font-medium text-gray-900 group-hover:text-chds-blue transition-colors line-clamp-1 text-sm">
+							<div class="font-medium text-text-theme-primary group-hover:text-chds-blue transition-colors line-clamp-1 text-sm">
 								{term.name}
 							</div>
-							<div class="text-xs text-gray-400 mt-1">
+							<div class="text-xs text-text-theme-tertiary mt-1">
 								{formatCount(term.document_count)} docs
 							</div>
 						</a>

@@ -20,7 +20,7 @@
 		</h1>
 
 		<!-- Description -->
-		<p class="text-lg text-gray-600 mb-8 max-w-xl mx-auto">
+		<p class="text-lg text-text-theme-secondary mb-8 max-w-xl mx-auto">
 			Ask questions about homeland security topics and get AI-powered answers with citations from the HSDL collection.
 		</p>
 
@@ -37,9 +37,9 @@
 					<div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
 						<Search class="w-5 h-5 text-chds-blue" />
 					</div>
-					<h3 class="font-semibold text-gray-900">Semantic Search</h3>
+					<h3 class="font-semibold text-text-theme-primary">Semantic Search</h3>
 				</div>
-				<p class="text-sm text-gray-600">
+				<p class="text-sm text-text-theme-secondary">
 					Find documents based on meaning, not just keywords. Ask complex questions and get relevant results.
 				</p>
 			</div>
@@ -48,9 +48,9 @@
 					<div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
 						<BookOpen class="w-5 h-5 text-chds-blue" />
 					</div>
-					<h3 class="font-semibold text-gray-900">Cited Answers</h3>
+					<h3 class="font-semibold text-text-theme-primary">Cited Answers</h3>
 				</div>
-				<p class="text-sm text-gray-600">
+				<p class="text-sm text-text-theme-secondary">
 					Every answer includes citations to source documents so you can verify and explore further.
 				</p>
 			</div>
@@ -58,7 +58,7 @@
 
 		<!-- CTA -->
 		<div class="space-y-4">
-			<p class="text-sm text-gray-500">In the meantime, explore using traditional search:</p>
+			<p class="text-sm text-text-theme-tertiary">In the meantime, explore using traditional search:</p>
 			<a href="/search" class="btn btn-primary inline-flex items-center gap-2">
 				Search Documents
 				<ArrowRight class="w-4 h-4" />

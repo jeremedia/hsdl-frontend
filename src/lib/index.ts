@@ -12,4 +12,4 @@ export {
 	type ThemeName,
 	type ColorMode,
 	type ThemeState
-} from './stores/theme';
+} from './stores/theme.svelte';

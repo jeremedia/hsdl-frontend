@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { Sun, Moon, Monitor, Palette, ChevronDown, Check } from 'lucide-svelte';
 	import {
 		initTheme,
@@ -11,7 +11,7 @@
 		COLOR_MODE_INFO,
 		type ThemeName,
 		type ColorMode
-	} from '$lib/stores/theme';
+	} from '$lib/stores/theme.svelte';
 
 	// Get reactive theme state
 	let themeState = $derived(getThemeState());
@@ -20,7 +20,7 @@
 	let isOpen = $state(false);
 	let dropdownRef: HTMLDivElement | null = $state(null);
 
-	// Initialize theme on mount
+	// Initialize theme on mount, consolidate cleanup to prevent memory leaks
 	onMount(() => {
 		initTheme();
 
@@ -33,13 +33,11 @@
 
 		document.addEventListener('click', handleClickOutside);
 
+		// Cleanup both listeners on destroy
 		return () => {
 			document.removeEventListener('click', handleClickOutside);
+			destroyTheme();
 		};
-	});
-
-	onDestroy(() => {
-		destroyTheme();
 	});
 
 	// Handle theme selection

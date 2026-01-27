@@ -157,10 +157,18 @@
 	--color-surface-secondary: #334155;
 	--color-surface-overlay: #1e293b;
 
+	/* Primary Colors - Inverted for dark mode (lighter blues for headings) */
+	--color-primary-100: #f0f7ff;
+	--color-primary-200: #e0efff;
+	--color-primary-300: #c7e0ff;
+	--color-primary-400: #93c5fd;
+	--color-primary-500: #60a5fa;
+	--color-primary-600: #3b82f6;
+
 	/* Text Colors - Dark Mode */
 	--color-text-primary: #f1f5f9;
-	--color-text-secondary: #94a3b8;
-	--color-text-tertiary: #64748b;
+	--color-text-secondary: #cbd5e1;
+	--color-text-tertiary: #94a3b8;
 	--color-text-inverse: var(--color-primary-600);
 
 	/* Border Colors - Dark Mode */
@@ -274,9 +282,9 @@
 	--color-info: #06b6d4;
 	--color-info-light: #cffafe;
 
-	/* Font Family - Berkeley Mono for dev aesthetic */
-	--font-sans: 'Inter', 'SF Pro Display', system-ui, sans-serif;
-	--font-serif: 'Source Serif Pro', 'Georgia', serif;
+	/* Font Family - Berkeley Mono for dev aesthetic (monospace everywhere) */
+	--font-sans: 'Berkeley Mono', 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+	--font-serif: 'Berkeley Mono', 'JetBrains Mono', monospace;
 	--font-mono: 'Berkeley Mono', 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
 
 	/* Border Radius - Developer theme uses subtle rounding */
@@ -610,9 +618,35 @@
    FONT DEFINITIONS
    ============================================================================= */
 
-/* Berkeley Mono (for developer theme) - self-hosted or use fallback */
+/* Berkeley Mono - Self-hosted for Developer theme */
 @font-face {
 	font-family: 'Berkeley Mono';
-	src: local('Berkeley Mono');
+	src: url('/fonts/BerkeleyMono-Regular.otf') format('opentype');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Berkeley Mono';
+	src: url('/fonts/BerkeleyMono-Italic.otf') format('opentype');
+	font-weight: 400;
+	font-style: italic;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Berkeley Mono';
+	src: url('/fonts/BerkeleyMono-Bold.otf') format('opentype');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Berkeley Mono';
+	src: url('/fonts/BerkeleyMono-BoldItalic.otf') format('opentype');
+	font-weight: 700;
+	font-style: italic;
 	font-display: swap;
 }
