@@ -545,6 +545,52 @@
 		background-color: var(--color-accent-500);
 		color: var(--color-primary-900);
 	}
+
+	/* Keyboard shortcut key */
+	.kbd {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 1.25rem;
+		padding: 0.0625rem 0.375rem;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--color-border);
+		background-color: var(--color-surface-secondary);
+		font-family: var(--font-mono);
+		font-size: 0.6875rem;
+		line-height: 1.25rem;
+		color: var(--color-text-secondary);
+		box-shadow: 0 1px 0 var(--color-border);
+	}
+
+	/* Disabled button states */
+	.btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+		pointer-events: none;
+	}
+
+	/* Compact input variant for dense forms */
+	.input-compact {
+		width: 100%;
+		padding: 0.25rem 0.5rem;
+		border-radius: var(--radius-md);
+		border: 1px solid var(--color-border);
+		background-color: var(--color-surface-elevated);
+		color: var(--color-text-primary);
+		font-size: 0.8125rem;
+		transition: var(--theme-transition);
+	}
+
+	.input-compact::placeholder {
+		color: var(--color-text-tertiary);
+	}
+
+	.input-compact:focus {
+		outline: none;
+		border-color: var(--color-interactive);
+		box-shadow: 0 0 0 2px var(--color-interactive) / 0.2;
+	}
 }
 
 /* =============================================================================

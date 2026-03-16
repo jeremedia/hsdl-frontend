@@ -1,9 +1,13 @@
 <script lang="ts">
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
+	import { page } from '$app/stores';
 	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
 	import '../app.css';
 
 	let { children } = $props();
+
+	// INK routes use their own layout shell (no HSDL header/footer)
+	let isInkRoute = $derived($page.url.pathname.startsWith('/ink'));
 
 	const queryClient = new QueryClient({
 		defaultOptions: {
@@ -30,129 +34,134 @@
 </svelte:head>
 
 <QueryClientProvider client={queryClient}>
-	<div class="min-h-screen flex flex-col bg-surface text-text-theme-primary transition-colors duration-normal">
-		<!-- Header -->
-		<header class="header-bg header-text sticky top-0 z-50 transition-colors duration-normal">
-			<div class="max-w-7xl mx-auto px-4">
-				<div class="flex items-center justify-between h-16">
-					<!-- Logo -->
-					<a href="/" class="flex items-center gap-2 font-semibold text-lg">
-						<span class="header-accent">HSDL</span>
-					</a>
-
-					<!-- Desktop Nav -->
-					<nav class="hidden md:flex items-center gap-6">
-						<a href="/search" class="text-white hover:text-white/80 transition-colors">Search</a>
-						<a href="/browse" class="text-white hover:text-white/80 transition-colors">Browse</a>
-						<a href="/chat" class="text-white hover:text-white/80 transition-colors">AI Assistant</a>
-						<a href="/speed" class="flex items-center gap-1.5 text-white hover:text-white/80 transition-colors">
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M13 10V3L4 14h7v7l9-11h-7z"
-								/>
-							</svg>
-							Speed
-							<span class="px-1.5 py-0.5 text-[10px] font-bold bg-[#FCB900] text-[#002B58]"
-								>DEV</span
-							>
+	{#if isInkRoute}
+		<!-- INK routes render their own layout shell -->
+		{@render children()}
+	{:else}
+		<div class="min-h-screen flex flex-col bg-surface text-text-theme-primary transition-colors duration-normal">
+			<!-- Header -->
+			<header class="header-bg header-text sticky top-0 z-50 transition-colors duration-normal">
+				<div class="max-w-7xl mx-auto px-4">
+					<div class="flex items-center justify-between h-16">
+						<!-- Logo -->
+						<a href="/" class="flex items-center gap-2 font-semibold text-lg">
+							<span class="header-accent">HSDL</span>
 						</a>
 
-						<!-- Theme Switcher -->
-						<ThemeSwitcher />
-					</nav>
+						<!-- Desktop Nav -->
+						<nav class="hidden md:flex items-center gap-6">
+							<a href="/search" class="text-white hover:text-white/80 transition-colors">Search</a>
+							<a href="/browse" class="text-white hover:text-white/80 transition-colors">Browse</a>
+							<a href="/chat" class="text-white hover:text-white/80 transition-colors">AI Assistant</a>
+							<a href="/speed" class="flex items-center gap-1.5 text-white hover:text-white/80 transition-colors">
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M13 10V3L4 14h7v7l9-11h-7z"
+									/>
+								</svg>
+								Speed
+								<span class="px-1.5 py-0.5 text-[10px] font-bold bg-[#FCB900] text-[#002B58]"
+									>DEV</span
+								>
+							</a>
 
-					<!-- Mobile: Theme + Menu -->
-					<div class="md:hidden flex items-center gap-2">
-						<ThemeSwitcher />
-						<button
-							class="p-2 touch-target"
-							onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
-							aria-label="Toggle menu"
-						>
-							<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								{#if mobileMenuOpen}
+							<!-- Theme Switcher -->
+							<ThemeSwitcher />
+						</nav>
+
+						<!-- Mobile: Theme + Menu -->
+						<div class="md:hidden flex items-center gap-2">
+							<ThemeSwitcher />
+							<button
+								class="p-2 touch-target"
+								onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
+								aria-label="Toggle menu"
+							>
+								<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									{#if mobileMenuOpen}
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M6 18L18 6M6 6l12 12"
+										/>
+									{:else}
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M4 6h16M4 12h16M4 18h16"
+										/>
+									{/if}
+								</svg>
+							</button>
+						</div>
+					</div>
+
+					<!-- Mobile Nav -->
+					{#if mobileMenuOpen}
+						<nav class="md:hidden py-4 border-t border-white/20">
+							<a
+								href="/search"
+								class="block py-2 text-white hover:text-white/80 transition-colors"
+								onclick={() => (mobileMenuOpen = false)}
+							>
+								Search
+							</a>
+							<a
+								href="/browse"
+								class="block py-2 text-white hover:text-white/80 transition-colors"
+								onclick={() => (mobileMenuOpen = false)}
+							>
+								Browse
+							</a>
+							<a
+								href="/chat"
+								class="block py-2 text-white hover:text-white/80 transition-colors"
+								onclick={() => (mobileMenuOpen = false)}
+							>
+								AI Assistant
+							</a>
+							<a
+								href="/speed"
+								class="flex items-center gap-2 py-2 text-white hover:text-white/80 transition-colors"
+								onclick={() => (mobileMenuOpen = false)}
+							>
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
 										stroke-width="2"
-										d="M6 18L18 6M6 6l12 12"
+										d="M13 10V3L4 14h7v7l9-11h-7z"
 									/>
-								{:else}
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M4 6h16M4 12h16M4 18h16"
-									/>
-								{/if}
-							</svg>
-						</button>
+								</svg>
+								Speed
+								<span class="px-1.5 py-0.5 text-[10px] font-bold bg-[#FCB900] text-[#002B58]"
+									>DEV</span
+								>
+							</a>
+						</nav>
+					{/if}
+				</div>
+			</header>
+
+			<!-- Main Content -->
+			<main class="flex-1">
+				{@render children()}
+			</main>
+
+			<!-- Footer -->
+			<footer class="bg-surface-secondary border-t border-theme transition-colors duration-normal">
+				<div class="max-w-7xl mx-auto px-4 py-8">
+					<div class="text-center text-sm text-text-theme-secondary">
+						<p>Homeland Security Digital Library</p>
+						<p class="mt-1">A service of the Center for Homeland Defense and Security</p>
 					</div>
 				</div>
-
-				<!-- Mobile Nav -->
-				{#if mobileMenuOpen}
-					<nav class="md:hidden py-4 border-t border-white/20">
-						<a
-							href="/search"
-							class="block py-2 text-white hover:text-white/80 transition-colors"
-							onclick={() => (mobileMenuOpen = false)}
-						>
-							Search
-						</a>
-						<a
-							href="/browse"
-							class="block py-2 text-white hover:text-white/80 transition-colors"
-							onclick={() => (mobileMenuOpen = false)}
-						>
-							Browse
-						</a>
-						<a
-							href="/chat"
-							class="block py-2 text-white hover:text-white/80 transition-colors"
-							onclick={() => (mobileMenuOpen = false)}
-						>
-							AI Assistant
-						</a>
-						<a
-							href="/speed"
-							class="flex items-center gap-2 py-2 text-white hover:text-white/80 transition-colors"
-							onclick={() => (mobileMenuOpen = false)}
-						>
-							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M13 10V3L4 14h7v7l9-11h-7z"
-								/>
-							</svg>
-							Speed
-							<span class="px-1.5 py-0.5 text-[10px] font-bold bg-[#FCB900] text-[#002B58]"
-								>DEV</span
-							>
-						</a>
-					</nav>
-				{/if}
-			</div>
-		</header>
-
-		<!-- Main Content -->
-		<main class="flex-1">
-			{@render children()}
-		</main>
-
-		<!-- Footer -->
-		<footer class="bg-surface-secondary border-t border-theme transition-colors duration-normal">
-			<div class="max-w-7xl mx-auto px-4 py-8">
-				<div class="text-center text-sm text-text-theme-secondary">
-					<p>Homeland Security Digital Library</p>
-					<p class="mt-1">A service of the Center for Homeland Defense and Security</p>
-				</div>
-			</div>
-		</footer>
-	</div>
+			</footer>
+		</div>
+	{/if}
 </QueryClientProvider>
