@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import {
 		FileText, Search, LayoutDashboard, ScrollText, Database,
 		Shield, Eye, Keyboard, Save, BarChart3, Tags, BookOpen,
@@ -107,7 +108,7 @@
 				</div>
 			</div>
 			<div class="pt-2 border-t border-theme">
-				<a href="/ink/documents" class="text-xs font-medium text-interactive hover:underline inline-flex items-center gap-1">
+				<a href="{base}/documents" class="text-xs font-medium text-interactive hover:underline inline-flex items-center gap-1">
 					Open Document Browser <ArrowRight size={12} />
 				</a>
 			</div>
@@ -216,7 +217,7 @@
 			{/each}
 		</div>
 		<div class="mt-3">
-			<a href="/ink/search" class="text-xs font-medium text-interactive hover:underline inline-flex items-center gap-1">
+			<a href="{base}/search" class="text-xs font-medium text-interactive hover:underline inline-flex items-center gap-1">
 				Open Search <ArrowRight size={12} />
 			</a>
 		</div>
@@ -256,7 +257,7 @@
 				Quick-link filters jump straight to problem areas: documents missing descriptions, low health scores, no FAST subjects, no embeddings.
 			</p>
 			<div class="pt-2">
-				<a href="/ink" class="text-xs font-medium text-interactive hover:underline inline-flex items-center gap-1">
+				<a href="{base}/" class="text-xs font-medium text-interactive hover:underline inline-flex items-center gap-1">
 					Open Dashboard <ArrowRight size={12} />
 				</a>
 			</div>
@@ -358,7 +359,7 @@
 			<p class="text-xs text-text-theme-secondary leading-relaxed">
 				This is internal tooling built in collaboration with its users, not software delivered at arm's length.
 			</p>
-			<a href="/ink/releases" class="text-xs font-medium text-interactive hover:underline inline-flex items-center gap-1">
+			<a href="{base}/releases" class="text-xs font-medium text-interactive hover:underline inline-flex items-center gap-1">
 				Read Version Notes <ArrowRight size={12} />
 			</a>
 		</div>
@@ -424,10 +425,10 @@
 			INK v0.13.0 -- Built for HSDL librarians, March 2026
 		</p>
 		<div class="flex items-center justify-center gap-4 mt-3">
-			<a href="/ink" class="text-xs font-medium text-interactive hover:underline">Dashboard</a>
-			<a href="/ink/documents" class="text-xs font-medium text-interactive hover:underline">Documents</a>
-			<a href="/ink/search" class="text-xs font-medium text-interactive hover:underline">Search</a>
-			<a href="/ink/releases" class="text-xs font-medium text-interactive hover:underline">Releases</a>
+			<a href="{base}/" class="text-xs font-medium text-interactive hover:underline">Dashboard</a>
+			<a href="{base}/documents" class="text-xs font-medium text-interactive hover:underline">Documents</a>
+			<a href="{base}/search" class="text-xs font-medium text-interactive hover:underline">Search</a>
+			<a href="{base}/releases" class="text-xs font-medium text-interactive hover:underline">Releases</a>
 		</div>
 	</section>
 </div>

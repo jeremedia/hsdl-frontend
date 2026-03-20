@@ -1,111 +1,229 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { Search } from 'lucide-svelte';
+	import { base } from '$app/paths';
+	import { createQuery } from '@tanstack/svelte-query';
+	import { inkApi } from '$lib/services/ink-api';
+	import HealthBar from '$lib/components/ink/HealthBar.svelte';
+	import { FileText, Heart, CheckCircle, XCircle, AlertTriangle, ArrowRight, Search, ClipboardList } from 'lucide-svelte';
 
-	let searchQuery = $state('');
+	const dashboardQuery = createQuery({
+		queryKey: ['ink', 'dashboard'],
+		queryFn: () => inkApi.getDashboard()
+	});
 
-	function handleSearch(event: Event) {
-		event.preventDefault();
-		if (searchQuery.trim()) {
-			goto(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+	function healthLabel(key: string): string {
+		switch (key) {
+			case 'excellent': return 'Excellent (80-100%)';
+			case 'good': return 'Good (60-79%)';
+			case 'fair': return 'Fair (40-59%)';
+			case 'poor': return 'Poor (0-39%)';
+			default: return key;
+		}
+	}
+
+	function healthColor(key: string): string {
+		switch (key) {
+			case 'excellent': return 'bg-green-500';
+			case 'good': return 'bg-blue-500';
+			case 'fair': return 'bg-yellow-500';
+			case 'poor': return 'bg-red-500';
+			default: return 'bg-gray-500';
+		}
+	}
+
+	// Readable labels for missing metadata keys
+	function missingLabel(key: string): string {
+		switch (key) {
+			case 'no_description': return 'Missing description';
+			case 'no_subjects': return 'No FAST subjects';
+			case 'no_embedding': return 'No embedding';
+			case 'no_pdf': return 'No PDF attached';
+			default: return key.replace('no_', 'No ').replace(/_/g, ' ');
+		}
+	}
+
+	// Build the filter URL for missing metadata drill-down
+	function missingFilterUrl(key: string): string {
+		switch (key) {
+			case 'no_description': return `${base}/documents?has_description=false`;
+			case 'no_subjects': return `${base}/documents?has_subjects=false`;
+			case 'no_embedding': return `${base}/documents?has_embedding=false`;
+			case 'no_pdf': return `${base}/documents?has_pdf=false`;
+			default: return `${base}/documents?has_${key.replace('no_', '')}=false`;
 		}
 	}
 </script>
 
-<div class="min-h-[80vh] flex flex-col">
-	<!-- Hero Section -->
-	<section class="flex-1 flex items-center justify-center bg-gradient-to-b from-chds-navy to-blue-900 text-white px-4 py-16">
-		<div class="max-w-3xl w-full text-center">
-			<h1 class="text-4xl md:text-5xl font-bold mb-4 !text-white">
-				<span class="whitespace-nowrap">Homeland Security</span>{' '}
-				<span class="whitespace-nowrap">Digital Library</span>
-			</h1>
-			<p class="text-lg md:text-xl text-blue-100 mb-8">
-				Search over 70,000 documents on homeland security policy, strategy, and research
-			</p>
+<svelte:head>
+	<title>Dashboard | INK</title>
+</svelte:head>
 
-			<!-- Search Box -->
-			<form onsubmit={handleSearch} class="relative max-w-2xl mx-auto">
-				<div class="relative">
-					<input
-						type="text"
-						bind:value={searchQuery}
-						placeholder="Search documents..."
-						class="w-full px-6 py-4 pr-14 text-lg rounded-full text-text-theme-primary placeholder:text-text-theme-tertiary shadow-xl focus:outline-none focus:ring-4 focus:ring-chds-yellow"
-					/>
-					<button
-						type="submit"
-						class="absolute right-2 top-1/2 -translate-y-1/2 p-3 bg-chds-blue text-white rounded-full hover:bg-blue-700 transition-colors"
-						aria-label="Search"
-					>
-						<Search class="w-5 h-5" />
-					</button>
-				</div>
-			</form>
-
-			<!-- Quick Links -->
-			<div class="mt-8 flex flex-wrap justify-center gap-3">
-				<a href="/search?q=cybersecurity&mode=semantic" class="badge bg-surface-elevated/20 text-white hover:bg-surface-elevated/30 transition-colors px-4 py-2 rounded-full text-sm">
-					Cybersecurity
-				</a>
-				<a href="/search?q=terrorism&mode=semantic" class="badge bg-surface-elevated/20 text-white hover:bg-surface-elevated/30 transition-colors px-4 py-2 rounded-full text-sm">
-					Terrorism
-				</a>
-				<a href="/search?q=emergency+management&mode=semantic" class="badge bg-surface-elevated/20 text-white hover:bg-surface-elevated/30 transition-colors px-4 py-2 rounded-full text-sm">
-					Emergency Management
-				</a>
-				<a href="/search?q=border+security&mode=semantic" class="badge bg-surface-elevated/20 text-white hover:bg-surface-elevated/30 transition-colors px-4 py-2 rounded-full text-sm">
-					Border Security
-				</a>
-			</div>
+<div class="space-y-4">
+	<div class="flex items-center justify-between">
+		<div>
+			<h1 class="text-xl font-bold text-text-theme-primary">Dashboard</h1>
+			<p class="text-xs text-text-theme-tertiary mt-0.5">HSDL collection overview</p>
 		</div>
-	</section>
+		<div class="flex items-center gap-2">
+			<a href="{base}/documents?sort=updated_at&direction=desc" class="btn btn-outline text-xs py-1 px-2.5">
+				<ClipboardList size={14} />
+				Recent edits
+			</a>
+			<a href="{base}/search" class="btn btn-primary text-xs py-1 px-2.5">
+				<Search size={14} />
+				Search
+			</a>
+		</div>
+	</div>
 
-	<!-- Features Section -->
-	<section class="py-16 px-4 bg-surface-elevated">
-		<div class="max-w-6xl mx-auto">
-			<h2 class="text-2xl font-bold text-center mb-12 text-text-theme-primary dark:text-white">
-				Discover Research
-			</h2>
-
-			<div class="grid md:grid-cols-3 gap-8">
-				<!-- Semantic Search -->
-				<div class="card p-6">
-					<div class="w-12 h-12 bg-chds-blue/10 rounded-lg flex items-center justify-center mb-4">
-						<Search class="w-6 h-6 text-chds-blue" />
-					</div>
-					<h3 class="font-semibold text-lg mb-2">Semantic Search</h3>
-					<p class="text-text-theme-secondary dark:text-text-theme-tertiary">
-						Find documents by meaning, not just keywords. Our AI-powered search understands your research intent.
-					</p>
+	{#if $dashboardQuery.isPending}
+		<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+			{#each Array(4) as _}
+				<div class="card p-3">
+					<div class="skeleton h-3 w-20 mb-2 rounded"></div>
+					<div class="skeleton h-6 w-14 rounded"></div>
 				</div>
+			{/each}
+		</div>
+	{:else if $dashboardQuery.isError}
+		<div class="card p-4 text-center">
+			<p class="text-error text-sm mb-3">Failed to load dashboard: {$dashboardQuery.error.message}</p>
+			<button onclick={() => $dashboardQuery.refetch()} class="btn btn-primary text-xs py-1 px-3">Retry</button>
+		</div>
+	{:else if $dashboardQuery.data}
+		{@const data = $dashboardQuery.data}
 
-				<!-- Browse Topics -->
-				<div class="card p-6">
-					<div class="w-12 h-12 bg-chds-blue/10 rounded-lg flex items-center justify-center mb-4">
-						<svg class="w-6 h-6 text-chds-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
-						</svg>
+		<!-- Stat Cards (compact) -->
+		<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+			<div class="card p-3">
+				<div class="flex items-center gap-2.5">
+					<div class="w-8 h-8 rounded bg-primary-100 flex items-center justify-center flex-shrink-0">
+						<FileText size={16} class="text-primary-700" />
 					</div>
-					<h3 class="font-semibold text-lg mb-2">Browse by Topic</h3>
-					<p class="text-text-theme-secondary dark:text-text-theme-tertiary">
-						Explore documents organized by subject area, document type, and organization.
-					</p>
-				</div>
-
-				<!-- AI Assistant -->
-				<div class="card p-6">
-					<div class="w-12 h-12 bg-chds-blue/10 rounded-lg flex items-center justify-center mb-4">
-						<svg class="w-6 h-6 text-chds-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-						</svg>
+					<div>
+						<p class="text-xs text-text-theme-tertiary">Total Documents</p>
+						<p class="text-lg font-bold leading-tight">{data.total_documents.toLocaleString()}</p>
 					</div>
-					<h3 class="font-semibold text-lg mb-2">AI Assistant</h3>
-					<p class="text-text-theme-secondary dark:text-text-theme-tertiary">
-						Ask questions in natural language and get intelligent answers from our document collection.
-					</p>
 				</div>
 			</div>
+
+			<div class="card p-3">
+				<div class="flex items-center gap-2.5">
+					<div class="w-8 h-8 rounded bg-success-light flex items-center justify-center flex-shrink-0">
+						<Heart size={16} class="text-success" />
+					</div>
+					<div>
+						<p class="text-xs text-text-theme-tertiary">Avg Health</p>
+						<p class="text-lg font-bold leading-tight">{Math.round(data.collection_health_avg * 100)}%</p>
+					</div>
+				</div>
+			</div>
+
+			<a href="{base}/documents?enable_status=enabled" class="card p-3 hover:shadow-md transition-shadow">
+				<div class="flex items-center gap-2.5">
+					<div class="w-8 h-8 rounded bg-success-light flex items-center justify-center flex-shrink-0">
+						<CheckCircle size={16} class="text-success" />
+					</div>
+					<div>
+						<p class="text-xs text-text-theme-tertiary">Enabled</p>
+						<p class="text-lg font-bold leading-tight">{data.enabled_count.toLocaleString()}</p>
+					</div>
+				</div>
+			</a>
+
+			<a href="{base}/documents?enable_status=disabled" class="card p-3 hover:shadow-md transition-shadow">
+				<div class="flex items-center gap-2.5">
+					<div class="w-8 h-8 rounded bg-error-light flex items-center justify-center flex-shrink-0">
+						<XCircle size={16} class="text-error" />
+					</div>
+					<div>
+						<p class="text-xs text-text-theme-tertiary">Disabled</p>
+						<p class="text-lg font-bold leading-tight">{data.disabled_count.toLocaleString()}</p>
+					</div>
+				</div>
+			</a>
 		</div>
-	</section>
+
+		<!-- QC Action Panel + Health Distribution -->
+		<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+			<!-- Missing Metadata (QC worklist) - takes 2/3 -->
+			<div class="card p-4 lg:col-span-2">
+				<div class="flex items-center gap-2 mb-3">
+					<AlertTriangle size={16} class="text-warning" />
+					<h2 class="text-sm font-semibold">QC Worklist</h2>
+					<span class="text-xs text-text-theme-tertiary">-- documents needing attention</span>
+				</div>
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+					{#each Object.entries(data.missing_metadata) as [key, count]}
+						<a
+							href={missingFilterUrl(key)}
+							class="flex items-center justify-between py-2 px-3 rounded hover:bg-surface-secondary transition-colors group border border-transparent hover:border-theme"
+						>
+							<span class="text-sm text-text-theme-primary">{missingLabel(key)}</span>
+							<span class="flex items-center gap-1.5">
+								<span class="text-sm font-semibold tabular-nums {count > 10000 ? 'text-error' : count > 1000 ? 'text-warning' : 'text-text-theme-secondary'}">{count.toLocaleString()}</span>
+								<ArrowRight size={12} class="text-text-theme-tertiary group-hover:text-interactive transition-colors" />
+							</span>
+						</a>
+					{/each}
+				</div>
+			</div>
+
+			<!-- Health Distribution - takes 1/3 -->
+			<div class="card p-4">
+				<h2 class="text-sm font-semibold mb-3">Health Distribution</h2>
+				<div class="space-y-2.5">
+					{#each Object.entries(data.health_distribution) as [key, count]}
+						{@const total = data.total_documents}
+						{@const pct = total > 0 ? (count / total) * 100 : 0}
+						<div>
+							<div class="flex items-center justify-between mb-0.5">
+								<span class="text-xs text-text-theme-secondary">{healthLabel(key)}</span>
+								<span class="text-xs font-medium tabular-nums">{count.toLocaleString()}</span>
+							</div>
+							<div class="h-1.5 bg-surface-secondary rounded-full overflow-hidden">
+								<div class="{healthColor(key)} h-full rounded-full transition-all" style="width: {count > 0 ? Math.max(pct, 2) : 0}%"></div>
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+
+		<!-- Recent Additions -->
+		{#if data.recent_additions.length > 0}
+			<div class="card">
+				<div class="flex items-center justify-between px-4 py-2.5 border-b border-theme">
+					<h2 class="text-sm font-semibold">Recent Additions</h2>
+					<a href="{base}/documents?sort=created_at&direction=desc" class="text-xs text-interactive hover:underline">
+						View all
+					</a>
+				</div>
+				<div class="divide-y divide-[var(--color-border)]">
+					{#each data.recent_additions as doc}
+						<a
+							href="{base}/documents/{doc.id}"
+							class="flex items-center justify-between py-2 px-4 hover:bg-surface-secondary transition-colors group"
+						>
+							<div class="min-w-0 flex-1">
+								<p class="text-sm font-medium truncate group-hover:text-interactive transition-colors">
+									{doc.title}
+								</p>
+								<p class="text-xs text-text-theme-tertiary">{doc.source || 'Unknown source'}</p>
+							</div>
+							<div class="flex items-center gap-3 flex-shrink-0 ml-4">
+								{#if doc.health_score != null}
+									<div class="w-14">
+										<HealthBar score={doc.health_score} size="sm" />
+									</div>
+								{/if}
+								<span class="text-xs text-text-theme-tertiary tabular-nums">
+									{doc.updated_at ? new Date(doc.updated_at).toLocaleDateString() : ''}
+								</span>
+							</div>
+						</a>
+					{/each}
+				</div>
+			</div>
+		{/if}
+	{/if}
 </div>

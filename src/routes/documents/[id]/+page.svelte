@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { createQuery } from '@tanstack/svelte-query';
@@ -42,7 +43,7 @@
 	<!-- Compact Header Bar -->
 	<div class="flex items-center gap-2 py-2 flex-shrink-0 border-b border-theme mb-0">
 		<a
-			href="/ink/documents"
+			href="{base}/documents"
 			class="p-1 rounded hover:bg-surface-secondary transition-colors flex-shrink-0"
 			aria-label="Back to documents"
 			title="Back to documents (or use browser back)"

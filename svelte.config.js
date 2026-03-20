@@ -6,6 +6,9 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
+		paths: {
+			base: '/ink'
+		},
 		adapter: adapter({
 			// Static adapter for SPA mode
 			pages: 'build',

@@ -1,30 +1,101 @@
 <script lang="ts">
 	import { QueryClient, QueryClientProvider } from '@tanstack/svelte-query';
+	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
+	import { inkApi } from '$lib/services/ink-api';
+	import { LayoutDashboard, FileText, Search, ScrollText, Info, Menu, X, Keyboard, Sun, Moon, Monitor, Zap } from 'lucide-svelte';
+	import { onMount } from 'svelte';
+	import { initTheme, destroyTheme, setColorMode, getThemeState, type ColorMode } from '$lib/stores/theme.svelte';
 	import '../app.css';
 
 	let { children } = $props();
 
-	// INK routes use their own layout shell (no HSDL header/footer)
-	let isInkRoute = $derived($page.url.pathname.startsWith('/ink'));
-
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {
-				staleTime: 5 * 60 * 1000, // 5 minutes
-				gcTime: 30 * 60 * 1000 // 30 minutes (was cacheTime)
+				staleTime: 2 * 60 * 1000,
+				gcTime: 10 * 60 * 1000
 			}
 		}
 	});
 
+	onMount(() => {
+		initTheme();
+		return () => destroyTheme();
+	});
+
+	let themeState = $derived(getThemeState());
+	const modeIcons = { light: Sun, dark: Moon, auto: Monitor } as const;
+	const modeOrder: ColorMode[] = ['light', 'dark', 'auto'];
+
+	function cycleColorMode() {
+		const idx = modeOrder.indexOf(themeState.colorMode);
+		setColorMode(modeOrder[(idx + 1) % modeOrder.length]);
+	}
+
+	let user = $state<{ id: string; name: string; email: string; role: string | null } | null>(null);
+	let authChecked = $state(false);
+	let accessDenied = $state(false);
 	let mobileMenuOpen = $state(false);
+	let showShortcuts = $state(false);
+
+	// Build the INK login URL on the Rails server.
+	// This endpoint stores return_to in a cookie, then redirects to OAuth.
+	// After login, the OAuth callback redirects back to our SvelteKit app.
+	const API_BASE = import.meta.env.VITE_API_BASE || '/api/spa/v1';
+	const INK_BASE = API_BASE.replace('/spa/', '/ink/');
+
+	$effect(() => {
+		inkApi
+			.getMe()
+			.then((u) => {
+				user = u;
+				authChecked = true;
+			})
+			.catch((err) => {
+				authChecked = true;
+				if (err?.status === 403) {
+					accessDenied = true;
+					return;
+				}
+				// 401 or network error — redirect to login
+				const returnTo = encodeURIComponent(window.location.href);
+				window.location.href = `${INK_BASE}/auth/login?return_to=${returnTo}`;
+			});
+	});
+
+	let currentPath = $derived($page.url.pathname);
+	let isEditorPage = $derived(currentPath.match(/\/documents\/[^/]+$/) !== null);
+
+	const navItems = [
+		{ href: `${base}/`, label: 'Dashboard', icon: LayoutDashboard },
+		{ href: `${base}/documents`, label: 'Documents', icon: FileText },
+		{ href: `${base}/search`, label: 'Search', icon: Search },
+		{ href: `${base}/releases`, label: 'Releases', icon: ScrollText },
+		{ href: `${base}/enrichment`, label: 'Enrichment', icon: Zap },
+		{ href: `${base}/overview`, label: 'Overview', icon: Info }
+	];
+
+	function isActive(href: string): boolean {
+		if (href === `${base}/`) return currentPath === `${base}` || currentPath === `${base}/`;
+		return currentPath.startsWith(href);
+	}
+
+	function handleGlobalKeydown(e: KeyboardEvent) {
+		if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+			const target = e.target as HTMLElement;
+			if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
+			e.preventDefault();
+			showShortcuts = !showShortcuts;
+		}
+		if (e.key === 'Escape' && showShortcuts) {
+			showShortcuts = false;
+		}
+	}
 </script>
 
 <svelte:head>
-	<title>HSDL - Homeland Security Digital Library</title>
-	<meta name="description" content="Search and discover homeland security research documents" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>INK - HSDL Collection Management</title>
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
@@ -33,135 +104,142 @@
 	/>
 </svelte:head>
 
+<svelte:window onkeydown={handleGlobalKeydown} />
+
 <QueryClientProvider client={queryClient}>
-	{#if isInkRoute}
-		<!-- INK routes render their own layout shell -->
-		{@render children()}
+	{#if !authChecked}
+		<div class="min-h-screen flex items-center justify-center bg-surface">
+			<div class="animate-pulse text-text-theme-secondary">Loading INK...</div>
+		</div>
+	{:else if accessDenied}
+		<div class="min-h-screen flex items-center justify-center bg-surface">
+			<div class="text-center">
+				<p class="text-text-theme-primary text-lg font-semibold mb-2">Access Denied</p>
+				<p class="text-text-theme-secondary text-sm">INK requires a librarian role. Contact your administrator.</p>
+			</div>
+		</div>
+	{:else if !user}
+		<div class="min-h-screen flex items-center justify-center bg-surface">
+			<p class="text-text-theme-secondary">Redirecting to login...</p>
+		</div>
 	{:else}
-		<div class="min-h-screen flex flex-col bg-surface text-text-theme-primary transition-colors duration-normal">
-			<!-- Header -->
-			<header class="header-bg header-text sticky top-0 z-50 transition-colors duration-normal">
-				<div class="max-w-7xl mx-auto px-4">
-					<div class="flex items-center justify-between h-16">
-						<!-- Logo -->
-						<a href="/" class="flex items-center gap-2 font-semibold text-lg">
-							<span class="header-accent">HSDL</span>
+		<div class="min-h-screen flex flex-col bg-surface text-text-theme-primary">
+			<!-- Top Navigation Bar (compact, horizontal) -->
+			<header class="h-10 bg-surface-elevated border-b border-theme flex items-center px-4 flex-shrink-0 z-40">
+				<!-- Brand -->
+				<a href="{base}/" class="flex items-center gap-1.5 mr-6 flex-shrink-0">
+					<span class="text-sm font-bold text-interactive tracking-tight">INK</span>
+					<span class="text-xs text-text-theme-tertiary hidden sm:inline">Collection Manager</span>
+				</a>
+
+				<!-- Desktop Nav -->
+				<nav class="hidden md:flex items-center gap-0.5 flex-1">
+					{#each navItems as item}
+						{@const Icon = item.icon}
+						<a
+							href={item.href}
+							class="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors
+								{isActive(item.href)
+								? 'bg-primary-100 text-primary-700'
+								: 'text-text-theme-secondary hover:bg-surface-secondary hover:text-text-theme-primary'}"
+						>
+							<Icon size={14} />
+							{item.label}
 						</a>
+					{/each}
+				</nav>
 
-						<!-- Desktop Nav -->
-						<nav class="hidden md:flex items-center gap-6">
-							<a href="/search" class="text-white hover:text-white/80 transition-colors">Search</a>
-							<a href="/browse" class="text-white hover:text-white/80 transition-colors">Browse</a>
-							<a href="/chat" class="text-white hover:text-white/80 transition-colors">AI Assistant</a>
-							<a href="/speed" class="flex items-center gap-1.5 text-white hover:text-white/80 transition-colors">
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M13 10V3L4 14h7v7l9-11h-7z"
-									/>
-								</svg>
-								Speed
-								<span class="px-1.5 py-0.5 text-[10px] font-bold bg-[#FCB900] text-[#002B58]"
-									>DEV</span
-								>
-							</a>
-
-							<!-- Theme Switcher -->
-							<ThemeSwitcher />
-						</nav>
-
-						<!-- Mobile: Theme + Menu -->
-						<div class="md:hidden flex items-center gap-2">
-							<ThemeSwitcher />
-							<button
-								class="p-2 touch-target"
-								onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
-								aria-label="Toggle menu"
-							>
-								<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									{#if mobileMenuOpen}
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M6 18L18 6M6 6l12 12"
-										/>
-									{:else}
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M4 6h16M4 12h16M4 18h16"
-										/>
-									{/if}
-								</svg>
-							</button>
-						</div>
+				<!-- Right side: user + shortcuts hint -->
+				<div class="hidden md:flex items-center gap-3 ml-auto">
+					<button
+						onclick={cycleColorMode}
+						class="text-text-theme-tertiary hover:text-text-theme-secondary transition-colors"
+						aria-label="Toggle color mode ({themeState.colorMode})"
+						title="Color mode: {themeState.colorMode}"
+					>
+						<svelte:component this={modeIcons[themeState.colorMode]} size={14} />
+					</button>
+					<button
+						onclick={() => (showShortcuts = !showShortcuts)}
+						class="text-text-theme-tertiary hover:text-text-theme-secondary transition-colors"
+						aria-label="Keyboard shortcuts"
+						title="Keyboard shortcuts (?)"
+					>
+						<Keyboard size={14} />
+					</button>
+					<div class="flex items-center gap-2 text-xs text-text-theme-secondary">
+						<span class="truncate max-w-[120px]">{user.name || user.email}</span>
+						<span class="text-text-theme-tertiary">{user.role || 'Librarian'}</span>
 					</div>
-
-					<!-- Mobile Nav -->
-					{#if mobileMenuOpen}
-						<nav class="md:hidden py-4 border-t border-white/20">
-							<a
-								href="/search"
-								class="block py-2 text-white hover:text-white/80 transition-colors"
-								onclick={() => (mobileMenuOpen = false)}
-							>
-								Search
-							</a>
-							<a
-								href="/browse"
-								class="block py-2 text-white hover:text-white/80 transition-colors"
-								onclick={() => (mobileMenuOpen = false)}
-							>
-								Browse
-							</a>
-							<a
-								href="/chat"
-								class="block py-2 text-white hover:text-white/80 transition-colors"
-								onclick={() => (mobileMenuOpen = false)}
-							>
-								AI Assistant
-							</a>
-							<a
-								href="/speed"
-								class="flex items-center gap-2 py-2 text-white hover:text-white/80 transition-colors"
-								onclick={() => (mobileMenuOpen = false)}
-							>
-								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M13 10V3L4 14h7v7l9-11h-7z"
-									/>
-								</svg>
-								Speed
-								<span class="px-1.5 py-0.5 text-[10px] font-bold bg-[#FCB900] text-[#002B58]"
-									>DEV</span
-								>
-							</a>
-						</nav>
-					{/if}
 				</div>
+
+				<!-- Mobile hamburger -->
+				<button onclick={() => (mobileMenuOpen = !mobileMenuOpen)} class="md:hidden ml-auto p-1.5 touch-target" aria-label="Toggle menu">
+					{#if mobileMenuOpen}
+						<X size={18} />
+					{:else}
+						<Menu size={18} />
+					{/if}
+				</button>
 			</header>
 
-			<!-- Main Content -->
-			<main class="flex-1">
-				{@render children()}
-			</main>
-
-			<!-- Footer -->
-			<footer class="bg-surface-secondary border-t border-theme transition-colors duration-normal">
-				<div class="max-w-7xl mx-auto px-4 py-8">
-					<div class="text-center text-sm text-text-theme-secondary">
-						<p>Homeland Security Digital Library</p>
-						<p class="mt-1">A service of the Center for Homeland Defense and Security</p>
+			<!-- Mobile dropdown menu -->
+			{#if mobileMenuOpen}
+				<div class="md:hidden bg-surface-elevated border-b border-theme px-4 py-2 space-y-1 z-30">
+					{#each navItems as item}
+						{@const Icon = item.icon}
+						<a
+							href={item.href}
+							onclick={() => (mobileMenuOpen = false)}
+							class="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors
+								{isActive(item.href)
+								? 'bg-primary-100 text-primary-700'
+								: 'text-text-theme-secondary hover:bg-surface-secondary hover:text-text-theme-primary'}"
+						>
+							<Icon size={16} />
+							{item.label}
+						</a>
+					{/each}
+					<div class="px-3 py-2 border-t border-theme mt-1 pt-2">
+						<p class="text-xs text-text-theme-secondary">{user.name || user.email}</p>
 					</div>
 				</div>
-			</footer>
+			{/if}
+
+			<!-- Main Content -->
+			<main class="flex-1 overflow-auto {isEditorPage ? '' : 'py-4'}">
+				<div class="{isEditorPage ? 'px-4 h-full' : 'max-w-7xl mx-auto px-4 sm:px-6'}">
+					{@render children()}
+				</div>
+			</main>
 		</div>
+
+		<!-- Keyboard Shortcuts Modal -->
+		{#if showShortcuts}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onclick={() => (showShortcuts = false)} onkeydown={() => {}}>
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="bg-surface-elevated rounded-lg shadow-xl border border-theme max-w-sm w-full p-4" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
+					<div class="flex items-center justify-between mb-3">
+						<h2 class="text-sm font-semibold text-text-theme-primary">Keyboard Shortcuts</h2>
+						<button onclick={() => (showShortcuts = false)} class="text-text-theme-tertiary hover:text-text-theme-primary">
+							<X size={16} />
+						</button>
+					</div>
+					<div class="space-y-2 text-xs">
+						<div class="font-medium text-text-theme-secondary uppercase tracking-wide mb-1">Document Browser</div>
+						<div class="flex justify-between"><span class="text-text-theme-secondary">Move down</span><kbd class="kbd">j</kbd></div>
+						<div class="flex justify-between"><span class="text-text-theme-secondary">Move up</span><kbd class="kbd">k</kbd></div>
+						<div class="flex justify-between"><span class="text-text-theme-secondary">Open document</span><kbd class="kbd">Enter</kbd></div>
+						<div class="flex justify-between"><span class="text-text-theme-secondary">Focus search</span><kbd class="kbd">/</kbd></div>
+						<div class="flex justify-between"><span class="text-text-theme-secondary">Toggle selection</span><kbd class="kbd">x</kbd></div>
+						<div class="border-t border-theme my-2"></div>
+						<div class="font-medium text-text-theme-secondary uppercase tracking-wide mb-1">Global</div>
+						<div class="flex justify-between"><span class="text-text-theme-secondary">Show shortcuts</span><kbd class="kbd">?</kbd></div>
+						<div class="flex justify-between"><span class="text-text-theme-secondary">Close modal</span><kbd class="kbd">Esc</kbd></div>
+					</div>
+				</div>
+			</div>
+		{/if}
 	{/if}
 </QueryClientProvider>

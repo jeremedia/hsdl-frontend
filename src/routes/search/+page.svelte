@@ -1,49 +1,45 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { page } from '$app/stores';
+	import { derived } from 'svelte/store';
 	import { goto } from '$app/navigation';
 	import { createQuery } from '@tanstack/svelte-query';
-	import { api } from '$lib/services/api';
-	import FacetSidebar from '$lib/components/FacetSidebar.svelte';
-	import FilterDrawer from '$lib/components/FilterDrawer.svelte';
-	import FilterPills from '$lib/components/FilterPills.svelte';
-	import {
-		Search,
-		Calendar,
-		FileText,
-		SlidersHorizontal,
-		GraduationCap,
-		ArrowUpDown,
-		ChevronLeft,
-		ChevronRight
-	} from 'lucide-svelte';
+	import { inkApi } from '$lib/services/ink-api';
+	import { inkPrefs } from '$lib/stores/ink-preferences.svelte';
+	import HealthBar from '$lib/components/ink/HealthBar.svelte';
+	import { Search, ChevronLeft, ChevronRight, AlertTriangle, FileText } from 'lucide-svelte';
 
-	// Get search params from URL
+	// URL-driven state with localStorage-backed defaults
 	let query = $derived($page.url.searchParams.get('q') || '');
-	let mode = $derived(($page.url.searchParams.get('mode') as 'semantic' | 'keyword') || 'semantic');
+	let mode = $derived($page.url.searchParams.get('mode') || inkPrefs.get<string>('search.mode', 'semantic'));
 	let currentPage = $derived(parseInt($page.url.searchParams.get('page') || '1'));
-	let yearStart = $derived($page.url.searchParams.get('year_start') || '');
-	let yearEnd = $derived($page.url.searchParams.get('year_end') || '');
-	let thesis = $derived(
-		($page.url.searchParams.get('thesis') as 'all' | 'thesis' | 'chds') || 'all'
-	);
-	let sort = $derived($page.url.searchParams.get('sort') || 'relevance');
 
-	// Parse terms from URL (comma-separated) - memoized to prevent unnecessary re-renders
-	let selectedTermsValue = $derived.by(() => {
-		const termsParam = $page.url.searchParams.get('terms');
-		return termsParam ? termsParam.split(',').filter(Boolean) : [];
-	});
-	// Stable reference for TanStack Query
-	let selectedTerms = () => selectedTermsValue;
-
-	// Mobile filter drawer state
-	let showMobileFilters = $state(false);
-
-	// Local search input state (separate from URL-derived query)
-	let searchInput = $state(query);
+	let searchInput = $state('');
 	$effect(() => {
 		searchInput = query;
 	});
+
+	const searchQuery = createQuery(
+		derived(page, ($p) => {
+			const q = $p.url.searchParams.get('q') || '';
+			const m = $p.url.searchParams.get('mode') || inkPrefs.get<string>('search.mode', 'semantic');
+			const cp = parseInt($p.url.searchParams.get('page') || '1');
+			return {
+				queryKey: ['ink', 'search', q, m, cp] as const,
+				queryFn: () => inkApi.search({ q, mode: m, page: cp, per_page: 25 }),
+				enabled: !!q
+			};
+		})
+	);
+
+	function buildUrl(overrides: Record<string, string | undefined>) {
+		const params = new URLSearchParams($page.url.searchParams);
+		for (const [k, v] of Object.entries(overrides)) {
+			if (v) params.set(k, v);
+			else params.delete(k);
+		}
+		return `${base}/search?${params.toString()}`;
+	}
 
 	function handleSearchSubmit(e: Event) {
 		e.preventDefault();
@@ -52,132 +48,16 @@
 		}
 	}
 
-	// Search query - runs in parallel with facets
-	const searchQuery = createQuery({
-		queryKey: ['search', query, mode, currentPage, yearStart, yearEnd, thesis, sort, selectedTerms()],
-		queryFn: () =>
-			api.search({
-				q: query,
-				mode,
-				page: currentPage,
-				per_page: 20,
-				terms: selectedTerms().length > 0 ? selectedTerms() : undefined,
-				year_start: yearStart ? parseInt(yearStart) : undefined,
-				year_end: yearEnd ? parseInt(yearEnd) : undefined,
-				thesis,
-				sort: sort as 'relevance' | 'date' | 'title'
-			}),
-		enabled: !!query
-	});
-
-	// Facets query - runs in parallel with search
-	const facetsQuery = createQuery({
-		queryKey: ['facets', query, mode, yearStart, yearEnd, thesis],
-		queryFn: () =>
-			api.getFacets({
-				q: query || undefined,
-				mode: query ? mode : undefined,
-				year_start: yearStart ? parseInt(yearStart) : undefined,
-				year_end: yearEnd ? parseInt(yearEnd) : undefined,
-				thesis
-			}),
-		enabled: !!query,
-		staleTime: 60000 // Facets can be slightly stale
-	});
-
-	// Build URL with current params
-	function buildUrl(overrides: Record<string, string | undefined> = {}) {
-		const params = new URLSearchParams();
-		const currentTerms = selectedTerms();
-		const values: Record<string, string | undefined> = {
-			q: query,
-			mode,
-			page: currentPage.toString(),
-			year_start: yearStart,
-			year_end: yearEnd,
-			thesis,
-			sort,
-			terms: currentTerms.length > 0 ? currentTerms.join(',') : undefined,
-			...overrides
-		};
-
-		for (const [key, value] of Object.entries(values)) {
-			if (
-				value &&
-				value !== 'all' &&
-				value !== 'relevance' &&
-				value !== 'semantic' &&
-				!(key === 'page' && value === '1')
-			) {
-				params.set(key, value);
-			}
+	function statusBadgeClass(status: string): string {
+		switch (status) {
+			case 'enabled': return 'bg-success-light text-green-700';
+			case 'disabled': return 'bg-error-light text-red-700';
+			default: return 'bg-surface-secondary text-text-theme-tertiary';
 		}
-
-		return `/search?${params.toString()}`;
 	}
 
-	// Filter handlers
-	function handleTermToggle(termId: string) {
-		const current = selectedTerms();
-		let newTerms: string[];
-		if (current.includes(termId)) {
-			newTerms = current.filter((t) => t !== termId);
-		} else {
-			newTerms = [...current, termId];
-		}
-		goto(buildUrl({ terms: newTerms.length > 0 ? newTerms.join(',') : undefined, page: '1' }));
-	}
-
-	function handleYearChange(start: string, end: string) {
-		goto(buildUrl({ year_start: start || undefined, year_end: end || undefined, page: '1' }));
-	}
-
-	function handleThesisChange(value: 'all' | 'thesis' | 'chds') {
-		goto(buildUrl({ thesis: value === 'all' ? undefined : value, page: '1' }));
-	}
-
-	function handleClearYears() {
-		goto(buildUrl({ year_start: undefined, year_end: undefined, page: '1' }));
-	}
-
-	function handleClearThesis() {
-		goto(buildUrl({ thesis: undefined, page: '1' }));
-	}
-
-	function handleClearAll() {
-		goto(buildUrl({ terms: undefined, year_start: undefined, year_end: undefined, thesis: undefined, page: '1' }));
-	}
-
-	function hasActiveFilters(): boolean {
-		return selectedTerms().length > 0 || yearStart !== '' || yearEnd !== '' || thesis !== 'all';
-	}
-
-	function getActiveFilterCount(): number {
-		let count = selectedTerms().length;
-		if (yearStart || yearEnd) count++;
-		if (thesis !== 'all') count++;
-		return count;
-	}
-
-	// Relevance bar helpers
-	function getRelevanceWidth(score: number | undefined): string {
-		if (score === undefined) return '0%';
-		return `${Math.round(score * 100)}%`;
-	}
-
-	function getRelevanceColor(score: number | undefined): string {
-		if (score === undefined) return 'bg-surface-secondary';
-		if (score >= 0.8) return 'bg-green-500';
-		if (score >= 0.6) return 'bg-lime-500';
-		if (score >= 0.4) return 'bg-yellow-500';
-		if (score >= 0.2) return 'bg-orange-500';
-		return 'bg-red-500';
-	}
-
-	// Pagination helpers
 	function getPageNumbers(current: number, total: number): (number | '...')[] {
 		if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-
 		const pages: (number | '...')[] = [];
 		if (current <= 4) {
 			pages.push(1, 2, 3, 4, 5, '...', total);
@@ -188,326 +68,191 @@
 		}
 		return pages;
 	}
+
+	// Focus the search input on load
+	$effect(() => {
+		if (!query) {
+			document.getElementById('ink-search-input')?.focus();
+		}
+	});
 </script>
 
 <svelte:head>
-	<title>{query ? `"${query}" - Search` : 'Search'} | HSDL</title>
+	<title>{query ? `"${query}" - Search` : 'Search'} | INK</title>
 </svelte:head>
 
-<!-- Mobile Filter Drawer -->
-<FilterDrawer
-	open={showMobileFilters}
-	facets={$facetsQuery.data ?? null}
-	selectedTerms={selectedTerms()}
-	{yearStart}
-	{yearEnd}
-	{thesis}
-	onTermToggle={handleTermToggle}
-	onYearChange={handleYearChange}
-	onThesisChange={handleThesisChange}
-	onClearAll={handleClearAll}
-	onClose={() => (showMobileFilters = false)}
-	loading={$facetsQuery.isPending}
-/>
-
-<div class="max-w-7xl mx-auto px-4 py-6 sm:py-8">
-	<!-- Search Header -->
-	<div class="mb-6">
-		<form onsubmit={handleSearchSubmit} class="flex gap-2">
-			<div class="relative flex-1">
-				<input
-					type="text"
-					bind:value={searchInput}
-					placeholder="Search documents..."
-					class="input pr-10 text-lg"
-				/>
-				<Search class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-theme-tertiary" />
-			</div>
-			<button type="submit" class="btn btn-primary px-6">Search</button>
-		</form>
-
-		<!-- Controls Bar -->
-		<div class="mt-4 flex flex-wrap items-center justify-between gap-4">
-			<!-- Mode toggle -->
-			<div class="flex items-center gap-2">
-				<span class="text-sm text-text-theme-tertiary">Mode:</span>
-				<div class="flex gap-1">
-					<a
-						href={buildUrl({ mode: 'semantic', page: '1' })}
-						class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {mode === 'semantic'
-							? 'bg-chds-blue text-white'
-							: 'bg-surface-secondary text-text-theme-secondary hover:bg-surface-secondary'}"
-					>
-						Semantic
-					</a>
-					<a
-						href={buildUrl({ mode: 'keyword', page: '1' })}
-						class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {mode === 'keyword'
-							? 'bg-chds-blue text-white'
-							: 'bg-surface-secondary text-text-theme-secondary hover:bg-surface-secondary'}"
-					>
-						Keyword
-					</a>
-				</div>
-			</div>
-
-			<!-- Sort and Mobile Filter Button -->
-			<div class="flex items-center gap-2">
-				<!-- Sort -->
-				<div class="flex items-center gap-1">
-					<label for="sort-select" class="sr-only">Sort results by</label>
-					<ArrowUpDown class="w-4 h-4 text-text-theme-tertiary" aria-hidden="true" />
-					<select
-						id="sort-select"
-						class="text-sm border-0 bg-transparent text-text-theme-secondary cursor-pointer focus:ring-0"
-						onchange={(e) => goto(buildUrl({ sort: e.currentTarget.value, page: '1' }))}
-					>
-						<option value="relevance" selected={sort === 'relevance'}>Relevance</option>
-						<option value="date" selected={sort === 'date'}>Date (newest)</option>
-						<option value="title" selected={sort === 'title'}>Title (A-Z)</option>
-					</select>
-				</div>
-
-				<!-- Mobile Filter Button -->
-				<button
-					onclick={() => (showMobileFilters = true)}
-					class="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors {hasActiveFilters()
-						? 'bg-chds-blue text-white'
-						: 'bg-surface-secondary text-text-theme-secondary hover:bg-surface-secondary'}"
+<div class="space-y-4">
+	<div class="flex items-center gap-3">
+		<h1 class="text-lg font-bold text-text-theme-primary">Search</h1>
+		<!-- Mode Toggle (inline with header) -->
+		<div class="flex gap-0.5 bg-surface-secondary rounded p-0.5">
+			{#each [
+				{ key: 'semantic', label: 'Semantic' },
+				{ key: 'keyword', label: 'Keyword' },
+				{ key: 'combined', label: 'Combined' }
+			] as m}
+				<a
+					href={buildUrl({ mode: m.key, page: '1' })}
+					onclick={() => inkPrefs.set('search.mode', m.key)}
+					class="px-2.5 py-1 rounded text-xs font-medium transition-colors
+						{mode === m.key
+						? 'bg-interactive text-white shadow-sm'
+						: 'text-text-theme-secondary hover:text-text-theme-primary'}"
 				>
-					<SlidersHorizontal class="w-4 h-4" />
-					Filters
-					{#if getActiveFilterCount() > 0}
-						<span
-							class="w-5 h-5 flex items-center justify-center rounded-full text-xs {hasActiveFilters()
-								? 'bg-surface-elevated text-chds-blue'
-								: 'bg-chds-blue text-white'}"
-						>
-							{getActiveFilterCount()}
-						</span>
-					{/if}
-				</button>
-			</div>
+					{m.label}
+				</a>
+			{/each}
 		</div>
 	</div>
 
-	<!-- Main Content with Sidebar -->
+	<!-- Search Bar -->
+	<form onsubmit={handleSearchSubmit} class="flex gap-2">
+		<div class="relative flex-1">
+			<input
+				id="ink-search-input"
+				type="text"
+				bind:value={searchInput}
+				placeholder="Search by title, description, or content..."
+				class="input pr-10"
+			/>
+			<Search class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-theme-tertiary" />
+		</div>
+		<button type="submit" class="btn btn-primary text-sm px-4">Search</button>
+	</form>
+
+	<!-- Mode description -->
+	<p class="text-xs text-text-theme-tertiary">
+		{#if mode === 'semantic'}
+			Semantic search finds documents by meaning, even when exact words differ. Good for finding related content.
+		{:else if mode === 'keyword'}
+			Keyword search matches exact terms in title and description. Use for duplicate checking by title.
+		{:else}
+			Combined search blends semantic meaning with keyword matching for balanced results.
+		{/if}
+	</p>
+
+	<!-- Results -->
 	{#if !query}
-		<div class="text-center py-16 text-text-theme-tertiary">
-			<Search class="w-16 h-16 mx-auto mb-4 opacity-50" />
-			<p class="text-lg">Enter a search query to find documents</p>
-			<p class="text-sm mt-2">
-				Try searching for topics like "cybersecurity", "terrorism", or "emergency management"
+		<div class="text-center py-12 text-text-theme-tertiary">
+			<Search class="w-10 h-10 mx-auto mb-3 opacity-40" />
+			<p class="text-sm font-medium">Enter a search query</p>
+			<p class="text-xs mt-1 max-w-sm mx-auto">
+				Use keyword mode to check for duplicates before adding a new record.
+				Semantic mode finds conceptually related documents.
 			</p>
 		</div>
-	{:else}
-		<div class="flex gap-6">
-			<!-- Desktop Sidebar -->
-			<div class="hidden lg:block w-72 flex-shrink-0">
-				<div class="sticky top-4 max-h-[calc(100vh-8rem)] overflow-hidden rounded-xl border border-border-theme shadow-sm">
-					<FacetSidebar
-						facets={$facetsQuery.data ?? null}
-						selectedTerms={selectedTerms()}
-						{yearStart}
-						{yearEnd}
-						{thesis}
-						onTermToggle={handleTermToggle}
-						onYearChange={handleYearChange}
-						onThesisChange={handleThesisChange}
-						onClearAll={handleClearAll}
-						loading={$facetsQuery.isPending}
-					/>
+	{:else if $searchQuery.isPending}
+		<div class="space-y-2">
+			{#each Array(8) as _}
+				<div class="card p-3">
+					<div class="skeleton h-4 w-3/4 mb-1.5 rounded"></div>
+					<div class="skeleton h-3 w-full mb-1 rounded"></div>
+					<div class="skeleton h-3 w-1/3 rounded"></div>
 				</div>
-			</div>
-
-			<!-- Results Area -->
-			<div class="flex-1 min-w-0">
-				<!-- Filter Pills (visible when filters are active) -->
-				<FilterPills
-					facets={$facetsQuery.data ?? null}
-					selectedTerms={selectedTerms()}
-					{yearStart}
-					{yearEnd}
-					{thesis}
-					onRemoveTerm={handleTermToggle}
-					onClearYears={handleClearYears}
-					onClearThesis={handleClearThesis}
-					onClearAll={handleClearAll}
-				/>
-
-				{#if $searchQuery.isPending}
-					<div class="space-y-4">
-						{#each Array(5) as _}
-							<div class="card p-4">
-								<div class="skeleton h-6 w-3/4 mb-2 rounded"></div>
-								<div class="skeleton h-4 w-full mb-1 rounded"></div>
-								<div class="skeleton h-4 w-2/3 rounded"></div>
-							</div>
-						{/each}
-					</div>
-				{:else if $searchQuery.isError}
-					<div class="text-center py-16">
-						<p class="text-red-500 mb-4">Error loading results: {$searchQuery.error.message}</p>
-						<button onclick={() => $searchQuery.refetch()} class="btn btn-primary">
-							Try Again
-						</button>
-					</div>
-				{:else if $searchQuery.data}
-					{@const data = $searchQuery.data}
-
-					<!-- Results Count with ARIA live region for screen readers -->
-					<div class="mb-4 flex items-center justify-between" role="status" aria-live="polite" aria-atomic="true">
-						<div class="flex items-center gap-3">
-							<p class="text-sm text-text-theme-secondary">
-								Found <span class="font-semibold">{data.total_count.toLocaleString()}</span> results
-								for
-								<span class="font-medium">"{data.query}"</span>
-							</p>
-							{#if data.serverTimeMs}
-								<span class="text-xs text-text-theme-tertiary" title="Server: {data.serverTimeMs?.toFixed(0)}ms, Network: {((data.clientTimeMs || 0) - (data.serverTimeMs || 0)).toFixed(0)}ms">
-									({data.serverTimeMs.toFixed(0)}ms)
-								</span>
-							{/if}
-						</div>
-						{#if data.total_pages > 1}
-							<p class="text-sm text-text-theme-tertiary">
-								Page {data.page} of {data.total_pages.toLocaleString()}
-							</p>
-						{/if}
-					</div>
-
-					<!-- Results List -->
-					{#if data.results.length === 0}
-						<div class="text-center py-12 text-text-theme-tertiary">
-							<Search class="w-12 h-12 mx-auto mb-3 opacity-50" />
-							<p>No documents match your search criteria</p>
-							{#if hasActiveFilters()}
-								<button
-									onclick={handleClearAll}
-									class="mt-3 text-chds-blue hover:text-chds-navy"
-								>
-									Clear filters and try again
-								</button>
-							{/if}
-						</div>
-					{:else}
-						<div class="space-y-3">
-							{#each data.results as doc}
-								<article class="card p-4 hover:shadow-md transition-shadow">
-									<div class="flex items-start gap-4">
-										<div class="flex-1 min-w-0">
-											<a href="/doc/{doc.id}" class="group">
-												<h2
-													class="font-semibold text-lg text-text-theme-primary group-hover:text-chds-blue transition-colors line-clamp-2"
-												>
-													{doc.title}
-												</h2>
-											</a>
-
-											{#if doc.description}
-												<p class="mt-2 text-text-theme-secondary line-clamp-2 text-sm">
-													{doc.description}
-												</p>
-											{/if}
-
-											<div
-												class="mt-3 flex flex-wrap items-center gap-3 text-sm text-text-theme-tertiary"
-											>
-												{#if doc.publish_year}
-													<span class="flex items-center gap-1">
-														<Calendar class="w-4 h-4" />
-														{doc.publish_year}
-													</span>
-												{/if}
-												<span class="flex items-center gap-1">
-													<FileText class="w-4 h-4" />
-													{doc.doc_type}
-												</span>
-												{#if doc.is_thesis}
-													<span class="badge bg-blue-100 text-blue-700">
-														<GraduationCap class="w-3 h-3 mr-1" />
-														Thesis
-													</span>
-												{/if}
-												{#if doc.terms.length > 0}
-													<div class="hidden sm:flex gap-1">
-														{#each doc.terms.slice(0, 2) as term}
-															<span class="badge badge-secondary">{term.name}</span>
-														{/each}
-													</div>
-												{/if}
-											</div>
-										</div>
-
-										<!-- Relevance score (for semantic search) -->
-										{#if doc.relevance_score !== undefined}
-											<div class="flex-shrink-0 w-16 text-right">
-												<div class="text-sm font-semibold text-text-theme-secondary">
-													{Math.round(doc.relevance_score * 100)}%
-												</div>
-												<div class="mt-1 h-1.5 bg-surface-secondary rounded-full overflow-hidden">
-													<div
-														class="h-full {getRelevanceColor(
-															doc.relevance_score
-														)} transition-all"
-														style="width: {getRelevanceWidth(doc.relevance_score)}"
-													></div>
-												</div>
-												<div class="text-xs text-text-theme-tertiary mt-0.5">match</div>
-											</div>
-										{/if}
-									</div>
-								</article>
-							{/each}
-						</div>
-
-						<!-- Pagination -->
-						{#if data.total_pages > 1}
-							<nav class="mt-8 flex items-center justify-center gap-1">
-								<!-- Previous -->
-								<a
-									href={data.page > 1 ? buildUrl({ page: (data.page - 1).toString() }) : '#'}
-									class="p-2 rounded-lg {data.page > 1
-										? 'hover:bg-surface-secondary text-text-theme-secondary'
-										: 'text-text-theme-tertiary cursor-not-allowed'}"
-									aria-disabled={data.page <= 1}
-								>
-									<ChevronLeft class="w-5 h-5" />
-								</a>
-
-								<!-- Page numbers -->
-								{#each getPageNumbers(data.page, data.total_pages) as pageNum}
-									{#if pageNum === '...'}
-										<span class="px-2 text-text-theme-tertiary">...</span>
-									{:else}
-										<a
-											href={buildUrl({ page: pageNum.toString() })}
-											class="px-3 py-1.5 rounded-lg text-sm font-medium {pageNum === data.page
-												? 'bg-chds-blue text-white'
-												: 'hover:bg-surface-secondary text-text-theme-secondary'}"
-										>
-											{pageNum}
-										</a>
-									{/if}
-								{/each}
-
-								<!-- Next -->
-								<a
-									href={data.page < data.total_pages
-										? buildUrl({ page: (data.page + 1).toString() })
-										: '#'}
-									class="p-2 rounded-lg {data.page < data.total_pages
-										? 'hover:bg-surface-secondary text-text-theme-secondary'
-										: 'text-text-theme-tertiary cursor-not-allowed'}"
-									aria-disabled={data.page >= data.total_pages}
-								>
-									<ChevronRight class="w-5 h-5" />
-								</a>
-							</nav>
-						{/if}
-					{/if}
-				{/if}
-			</div>
+			{/each}
 		</div>
+	{:else if $searchQuery.isError}
+		<div class="card p-4 text-center">
+			<p class="text-error text-sm mb-3">{$searchQuery.error.message}</p>
+			<button onclick={() => $searchQuery.refetch()} class="btn btn-primary text-xs py-1 px-3">Retry</button>
+		</div>
+	{:else if $searchQuery.data}
+		{@const data = $searchQuery.data}
+
+		<div class="flex items-center justify-between text-xs text-text-theme-secondary">
+			<span>
+				<span class="font-semibold">{data.total_count.toLocaleString()}</span> results for "{query}"
+			</span>
+			{#if data.total_pages > 1}
+				<span class="text-text-theme-tertiary">Page {data.page} of {data.total_pages}</span>
+			{/if}
+		</div>
+
+		{#if data.results.length === 0}
+			<div class="text-center py-8 text-text-theme-tertiary">
+				<FileText class="w-8 h-8 mx-auto mb-2 opacity-40" />
+				<p class="text-sm">No documents match your search</p>
+				<p class="text-xs mt-1">Try different keywords or switch to semantic mode</p>
+			</div>
+		{:else}
+			<div class="space-y-1.5">
+				{#each data.results as doc, i}
+					<a
+						href="{base}/documents/{doc.id}"
+						class="card px-3 py-2.5 block hover:shadow-sm transition-shadow group"
+					>
+						<div class="flex items-start gap-3">
+							<div class="flex-1 min-w-0">
+								<div class="flex items-center gap-2">
+									<h2 class="text-sm font-medium text-text-theme-primary line-clamp-1 group-hover:text-interactive transition-colors">
+										{doc.title}
+									</h2>
+								</div>
+								{#if doc.description}
+									<p class="text-xs text-text-theme-secondary mt-0.5 line-clamp-2 leading-relaxed">{doc.description}</p>
+								{/if}
+								<div class="flex items-center gap-2 mt-1 text-[0.625rem] text-text-theme-tertiary">
+									{#if doc.publish_year}
+										<span>{doc.publish_year}</span>
+									{/if}
+									{#if doc.source}
+										<span>{doc.source}</span>
+									{/if}
+									<span class="badge text-[0.625rem] {statusBadgeClass(doc.enable_status)}">
+										{doc.enable_status === 'not_set' ? 'unset' : doc.enable_status}
+									</span>
+									{#if doc.term_count > 0}
+										<span>{doc.term_count} terms</span>
+									{/if}
+								</div>
+							</div>
+							<div class="w-16 flex-shrink-0 pt-0.5">
+								<HealthBar score={doc.health_score} size="sm" />
+							</div>
+						</div>
+					</a>
+				{/each}
+			</div>
+
+			<!-- Pagination -->
+			{#if data.total_pages > 1}
+				<nav class="flex items-center justify-center gap-0.5 pt-2" aria-label="Search pagination">
+					<a
+						href={data.page > 1 ? buildUrl({ page: String(data.page - 1) }) : undefined}
+						class="p-1.5 rounded {data.page > 1
+							? 'hover:bg-surface-secondary text-text-theme-secondary'
+							: 'text-text-theme-tertiary cursor-not-allowed pointer-events-none'}"
+						aria-label="Previous page"
+					>
+						<ChevronLeft size={16} />
+					</a>
+
+					{#each getPageNumbers(data.page, data.total_pages) as pageNum}
+						{#if pageNum === '...'}
+							<span class="px-1.5 text-text-theme-tertiary text-xs">...</span>
+						{:else}
+							<a
+								href={buildUrl({ page: String(pageNum) })}
+								class="px-2 py-1 rounded text-xs font-medium {pageNum === data.page
+									? 'bg-interactive text-white'
+									: 'hover:bg-surface-secondary text-text-theme-secondary'}"
+							>
+								{pageNum}
+							</a>
+						{/if}
+					{/each}
+
+					<a
+						href={data.page < data.total_pages ? buildUrl({ page: String(data.page + 1) }) : undefined}
+						class="p-1.5 rounded {data.page < data.total_pages
+							? 'hover:bg-surface-secondary text-text-theme-secondary'
+							: 'text-text-theme-tertiary cursor-not-allowed pointer-events-none'}"
+						aria-label="Next page"
+					>
+						<ChevronRight size={16} />
+					</a>
+				</nav>
+			{/if}
+		{/if}
 	{/if}
 </div>

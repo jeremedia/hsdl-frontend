@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { page } from '$app/stores';
+	import { derived } from 'svelte/store';
 	import { goto } from '$app/navigation';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { inkApi } from '$lib/services/ink-api';
@@ -27,20 +29,28 @@
 	// Selected rows for batch operations
 	let selectedIds = $state<Set<string>>(new Set());
 
-	const documentsQuery = createQuery({
-		queryKey: ['ink', 'documents', currentPage, perPage, sort, direction, searchQuery, enableStatus, hasPdf, hasEmbedding],
-		queryFn: () =>
-			inkApi.getDocuments({
-				page: currentPage,
-				per_page: perPage,
-				sort,
-				direction,
-				q: searchQuery || undefined,
-				enable_status: enableStatus || undefined,
-				has_pdf: hasPdf === 'true' ? true : hasPdf === 'false' ? false : undefined,
-				has_embedding: hasEmbedding === 'true' ? true : hasEmbedding === 'false' ? false : undefined
-			})
-	});
+	const documentsQuery = createQuery(
+		derived(page, ($p) => {
+			const cp = parseInt($p.url.searchParams.get('page') || '1');
+			const pp = parseInt($p.url.searchParams.get('per_page') || String(inkPrefs.get<number>('documents.perPage', 50)));
+			const s = $p.url.searchParams.get('sort') || inkPrefs.get<string>('documents.sort', 'updated_at');
+			const d = $p.url.searchParams.get('direction') || inkPrefs.get<string>('documents.direction', 'desc');
+			const q = $p.url.searchParams.get('q') || '';
+			const es = $p.url.searchParams.get('enable_status') || inkPrefs.get<string>('documents.enableStatus', '');
+			const hp = $p.url.searchParams.get('has_pdf') || inkPrefs.get<string>('documents.hasPdf', '');
+			const he = $p.url.searchParams.get('has_embedding') || inkPrefs.get<string>('documents.hasEmbedding', '');
+			return {
+				queryKey: ['ink', 'documents', cp, pp, s, d, q, es, hp, he] as const,
+				queryFn: () => inkApi.getDocuments({
+					page: cp, per_page: pp, sort: s, direction: d,
+					q: q || undefined,
+					enable_status: es || undefined,
+					has_pdf: hp === 'true' ? true : hp === 'false' ? false : undefined,
+					has_embedding: he === 'true' ? true : he === 'false' ? false : undefined
+				})
+			};
+		})
+	);
 
 	// Row navigation
 	let focusedRow = $state(0);
@@ -59,7 +69,7 @@
 				e.preventDefault();
 				break;
 			case 'Enter':
-				if (data.results[focusedRow]) goto(`/ink/documents/${data.results[focusedRow].id}`);
+				if (data.results[focusedRow]) goto(`${base}/documents/${data.results[focusedRow].id}`);
 				break;
 			case 'x':
 				// Toggle selection on focused row
@@ -89,7 +99,7 @@
 			if (v) params.set(k, v);
 			else params.delete(k);
 		}
-		return `/ink/documents?${params.toString()}`;
+		return `${base}/documents?${params.toString()}`;
 	}
 
 	function handleSearchSubmit(e: Event) {
@@ -115,7 +125,7 @@
 		inkPrefs.set('documents.enableStatus', '');
 		inkPrefs.set('documents.hasPdf', '');
 		inkPrefs.set('documents.hasEmbedding', '');
-		goto('/ink/documents');
+		goto(`${base}/documents`);
 	}
 
 	let hasFilters = $derived(searchQuery || enableStatus || hasPdf || hasEmbedding);
@@ -208,7 +218,7 @@
 	</div>
 
 	<!-- Results -->
-	{#if $documentsQuery.isPending}
+	{#if $documentsQuery.isPending && !$documentsQuery.data}
 		<div class="card">
 			{#each Array(15) as _}
 				<div class="flex items-center gap-3 px-3 py-2 border-b border-theme">
@@ -259,7 +269,7 @@
 				{direction}
 				onsort={handleSort}
 				onselect={handleSelect}
-				onnavigate={(id) => goto(`/ink/documents/${id}`)}
+				onnavigate={(id) => goto(`${base}/documents/${id}`)}
 			/>
 		</div>
 

@@ -85,6 +85,33 @@ export interface VocabularyTerm {
 	vocabulary_term_relations_count: number;
 }
 
+export interface EnrichmentCoverage {
+	count: number;
+	total: number;
+	pct: number;
+	note?: string;
+}
+
+export interface EnrichmentStatus {
+	coverage: Record<string, EnrichmentCoverage>;
+	queues: Record<string, { size: number; latency: number }>;
+	recent_activity: Array<{
+		id: string;
+		docID: number;
+		title: string | null;
+		enrichment: string | null;
+		model: string | null;
+		at: string | null;
+		health_score: number | null;
+	}>;
+	model_provenance: Record<string, Record<string, number>>;
+	totals: {
+		total_documents: number;
+		publicly_visible: number;
+		pdfs: number;
+	};
+}
+
 export interface DocumentSearchParams {
 	page?: number;
 	per_page?: number;
@@ -168,6 +195,11 @@ class InkApiClient {
 	// Dashboard
 	async getDashboard(): Promise<DashboardData> {
 		return this.fetch('/dashboard');
+	}
+
+	// Enrichment
+	async getEnrichmentStatus(): Promise<EnrichmentStatus> {
+		return this.fetch('/enrichment');
 	}
 
 	// Documents
