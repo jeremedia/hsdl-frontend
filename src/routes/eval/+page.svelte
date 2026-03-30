@@ -142,4 +142,68 @@
 			</div>
 		{/if}
 	{/if}
+
+	<!-- How it works -->
+	<div class="card p-5 space-y-4 mt-2">
+		<h2 class="text-sm font-semibold text-text-theme-primary">How Search Evaluation Works</h2>
+
+		<p class="text-xs text-text-theme-secondary leading-relaxed">
+			This tool measures how well HSDL search serves real queries. When we change the search engine
+			(new ranking signals, different weights, series collapsing), we need to know: did results get
+			better or worse? Evaluation gives us numbers instead of guesses.
+		</p>
+
+		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			<div>
+				<h3 class="text-xs font-semibold text-text-theme-primary mb-1">1. Create a Query Set</h3>
+				<p class="text-[0.6875rem] text-text-theme-tertiary leading-relaxed">
+					A set is a collection of test queries that represent how people actually search HSDL.
+					Short keywords, full questions, misspellings, acronyms, broad topics. Import from a CSV
+					or add queries one by one. Include expected docIDs when you know what should appear.
+				</p>
+			</div>
+			<div>
+				<h3 class="text-xs font-semibold text-text-theme-primary mb-1">2. Run and Rate</h3>
+				<p class="text-[0.6875rem] text-text-theme-tertiary leading-relaxed">
+					Click "Run Now" to execute every query against the live search engine. The system captures
+					the top 15 results with their scores. Then rate each result on three dimensions:
+					<span class="text-text-theme-secondary">relevance</span> (0-3),
+					<span class="text-text-theme-secondary">intent match</span> (direct answer, supporting, background),
+					and <span class="text-text-theme-secondary">failure flags</span> (too narrow, too broad, wrong context, etc.).
+				</p>
+			</div>
+			<div>
+				<h3 class="text-xs font-semibold text-text-theme-primary mb-1">3. Compare Runs</h3>
+				<p class="text-[0.6875rem] text-text-theme-tertiary leading-relaxed">
+					After a search change, run the same set again and compare. The system computes
+					NDCG, MAP, and precision metrics automatically. The comparison view shows which queries
+					improved, which regressed, and which failure modes shifted. Export to CSV anytime.
+				</p>
+			</div>
+		</div>
+
+		<div class="pt-2 border-t border-theme">
+			<h3 class="text-xs font-semibold text-text-theme-primary mb-1.5">Rating Rubric</h3>
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-[0.6875rem]">
+				<div>
+					<span class="text-text-theme-secondary font-medium">Relevance:</span>
+					<span class="text-text-theme-tertiary">
+						3 = directly answers, 2 = relevant but broader, 1 = weak connection, 0 = not relevant
+					</span>
+				</div>
+				<div>
+					<span class="text-text-theme-secondary font-medium">Intent:</span>
+					<span class="text-text-theme-tertiary">
+						Direct Answer (user stops searching), Supporting Info (helpful but partial), Background Info (loosely related)
+					</span>
+				</div>
+				<div>
+					<span class="text-text-theme-secondary font-medium">Failure Flags:</span>
+					<span class="text-text-theme-tertiary">
+						Overly Semantic, Keyword Overfit, Wrong Context, Too Narrow, Too Broad
+					</span>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
