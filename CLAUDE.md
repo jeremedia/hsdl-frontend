@@ -71,6 +71,12 @@ frontend/
 │       ├── browse/          # Taxonomy browser
 │       ├── doc/             # Document detail view
 │       ├── chat/            # AI chat interface
+│       ├── eval/            # Golden query evaluation
+│       │   ├── +page.svelte         # Sets list + how-it-works guide
+│       │   ├── [id]/+page.svelte    # Set detail (queries + runs)
+│       │   └── runs/[id]/
+│       │       ├── +page.svelte     # Rating workspace (3-dimension rating)
+│       │       └── compare/[otherId]/+page.svelte  # Run comparison
 │       └── speed/           # Performance dashboard
 ├── static/               # Static files (favicon, PWA icons)
 ├── svelte.config.js      # SvelteKit config (static adapter)
@@ -307,7 +313,15 @@ fetch('/api/spa/v1/auth/me', { credentials: 'include' })
 
 ## Route Scope
 
-This SvelteKit SPA handles search, browse, document detail, chat, and performance routes. Some features (feed, dialectic) are rendered by the Rails app directly (HAML views + Stimulus), not by this SvelteKit frontend.
+This SvelteKit SPA handles search, browse, document detail, chat, eval, and performance routes. Some features (feed, dialectic) are rendered by the Rails app directly (HAML views + Stimulus), not by this SvelteKit frontend.
+
+## Build Gotcha
+
+The build bakes in `VITE_API_BASE` at compile time. For local dev builds served from Rails `public/ink/`, build with:
+```bash
+VITE_API_BASE=/api/spa/v1 npm run build
+```
+Without this, the SPA calls the production host instead of same-origin. The Dockerfile handles this automatically for staging/production.
 
 ## Build Output
 
