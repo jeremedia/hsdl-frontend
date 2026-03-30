@@ -151,6 +151,102 @@ class InkApiError extends Error {
 	}
 }
 
+// Golden Query Evaluation types
+
+export interface GoldenQuery {
+	id: string;
+	query_text: string;
+	position: number;
+	expected_doc_ids: number[];
+	notes: string | null;
+}
+
+export interface RatingEntry {
+	relevance: number;
+	intent: string | null;
+	failure: string | null;
+}
+
+export interface SearchResult {
+	rank: number;
+	doc_id: number;
+	uuid: string;
+	title: string;
+	rrf_score: number;
+	matched_by: string[];
+}
+
+export interface GoldenQueryRunResult {
+	id: string;
+	query_id: string;
+	query_text: string;
+	position: number;
+	expected_doc_ids: number[];
+	results: SearchResult[];
+	ratings: Record<string, RatingEntry>;
+	no_strong_matches: boolean;
+	per_query_metrics: Record<string, number | Record<string, number>>;
+	rated_by: string | null;
+	rated_at: string | null;
+}
+
+export interface RatingProgress {
+	rated: number;
+	total: number;
+	complete: boolean;
+}
+
+export interface GoldenQueryRunSummary {
+	id: string;
+	set_id: string;
+	set_name: string;
+	label: string | null;
+	status: string;
+	run_by: string | null;
+	rating_progress: RatingProgress;
+	aggregate_metrics: Record<string, unknown>;
+	no_strong_matches_count: number;
+	started_at: string | null;
+	completed_at: string | null;
+}
+
+export interface GoldenQueryRunDetail extends GoldenQueryRunSummary {
+	results: GoldenQueryRunResult[];
+}
+
+export interface GoldenQuerySet {
+	id: string;
+	name: string;
+	description: string | null;
+	query_count: number;
+	latest_run: GoldenQueryRunSummary | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface GoldenQuerySetDetail {
+	id: string;
+	name: string;
+	description: string | null;
+	queries: GoldenQuery[];
+	runs: GoldenQueryRunSummary[];
+	created_at: string;
+}
+
+export interface GoldenRunComparison {
+	run_a: GoldenQueryRunSummary;
+	run_b: GoldenQueryRunSummary;
+	deltas: Record<string, { a: number; b: number; delta: number }>;
+	per_query: Array<{ query_id: string; query_text: string; ndcg_a: number; ndcg_b: number; delta: number }>;
+}
+
+export interface RatedResult {
+	id: string;
+	ratings: Record<string, RatingEntry>;
+	per_query_metrics: Record<string, unknown>;
+	rated_at: string;
+}
+
 export interface ReleaseNote {
 	version: string;
 	release_date: string;
@@ -288,6 +384,69 @@ class InkApiClient {
 	async getReleaseNotes(tag?: string): Promise<ReleaseNote[]> {
 		const params = tag ? `?tag=${encodeURIComponent(tag)}` : '';
 		return this.fetch(`/release_notes${params}`);
+	}
+
+	// Golden Query Evaluation
+	async getGoldenSets(): Promise<GoldenQuerySet[]> {
+		return this.fetch('/golden_sets');
+	}
+
+	async getGoldenSet(id: string): Promise<GoldenQuerySetDetail> {
+		return this.fetch(`/golden_sets/${id}`);
+	}
+
+	async createGoldenSet(data: { name: string; description?: string; queries?: Array<{ query_text: string; expected_doc_ids?: number[] }> }): Promise<GoldenQuerySetDetail> {
+		return this.fetch('/golden_sets', { method: 'POST', body: JSON.stringify(data) });
+	}
+
+	async updateGoldenSet(id: string, data: { name?: string; description?: string }): Promise<GoldenQuerySetDetail> {
+		return this.fetch(`/golden_sets/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+	}
+
+	async deleteGoldenSet(id: string): Promise<void> {
+		await this.fetch(`/golden_sets/${id}`, { method: 'DELETE' });
+	}
+
+	async importGoldenQueries(setId: string, csv: string): Promise<{ imported: number; set: GoldenQuerySetDetail }> {
+		return this.fetch(`/golden_sets/${setId}/import`, { method: 'POST', body: JSON.stringify({ csv }) });
+	}
+
+	async addGoldenQuery(setId: string, data: { query_text: string; expected_doc_ids?: number[]; notes?: string }): Promise<GoldenQuery> {
+		return this.fetch(`/golden_sets/${setId}/queries`, { method: 'POST', body: JSON.stringify(data) });
+	}
+
+	async updateGoldenQuery(setId: string, queryId: string, data: { query_text?: string; expected_doc_ids?: number[]; notes?: string }): Promise<GoldenQuery> {
+		return this.fetch(`/golden_sets/${setId}/queries/${queryId}`, { method: 'PATCH', body: JSON.stringify(data) });
+	}
+
+	async deleteGoldenQuery(setId: string, queryId: string): Promise<void> {
+		await this.fetch(`/golden_sets/${setId}/queries/${queryId}`, { method: 'DELETE' });
+	}
+
+	async createGoldenRun(setId: string, label?: string): Promise<GoldenQueryRunDetail> {
+		return this.fetch(`/golden_sets/${setId}/runs`, { method: 'POST', body: JSON.stringify({ label }) });
+	}
+
+	async getGoldenRuns(setId: string): Promise<GoldenQueryRunSummary[]> {
+		return this.fetch(`/golden_sets/${setId}/runs`);
+	}
+
+	async getGoldenRun(runId: string): Promise<GoldenQueryRunDetail> {
+		return this.fetch(`/golden_runs/${runId}`);
+	}
+
+	async compareGoldenRuns(runIdA: string, runIdB: string): Promise<GoldenRunComparison> {
+		return this.fetch(`/golden_runs/${runIdA}/compare/${runIdB}`);
+	}
+
+	async exportGoldenRunCsv(runId: string): Promise<Blob> {
+		const url = `${this.baseUrl}/golden_runs/${runId}/export`;
+		const response = await fetch(url, { credentials: 'include' });
+		return response.blob();
+	}
+
+	async rateGoldenResult(resultId: string, data: { ratings: Record<string, RatingEntry>; no_strong_matches?: boolean }): Promise<RatedResult> {
+		return this.fetch(`/golden_run_results/${resultId}/rate`, { method: 'PATCH', body: JSON.stringify(data) });
 	}
 }
 
