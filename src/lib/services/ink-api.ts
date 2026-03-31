@@ -40,6 +40,51 @@ export interface InkDocumentFull extends InkDocument {
 	created_at: string;
 }
 
+// Search Lab types
+export interface SearchConfigSummary {
+	id: string;
+	name: string;
+	description: string | null;
+	active: boolean;
+	locked: boolean;
+	updated_at: string;
+	activated_at: string | null;
+}
+
+export interface SearchConfigDetail extends SearchConfigSummary {
+	field_boosts: Record<string, number>;
+	synonyms: Record<string, string[]>;
+	synonym_count: number;
+	excluded_terms: string[];
+	excluded_patterns: string[];
+	defaults: Record<string, unknown>;
+	prefix_matching: Record<string, unknown>;
+	hybrid_params: {
+		rrf_k: number;
+		title_boost_weight: number;
+		subject_boost_weight: number;
+		fetch_size_multiplier: number;
+		series_collapse_enabled: boolean;
+	};
+	notes: string | null;
+}
+
+export interface PreviewResult {
+	rank: number;
+	doc_id: number;
+	uuid: string;
+	title: string;
+	rrf_score: number;
+	matched_by: string[];
+}
+
+export interface PreviewResponse {
+	query: string;
+	config_name: string;
+	results: PreviewResult[];
+	timing_ms: number;
+}
+
 export interface InkUser {
 	id: string;
 	email: string;
@@ -447,6 +492,41 @@ class InkApiClient {
 
 	async rateGoldenResult(resultId: string, data: { ratings: Record<string, RatingEntry>; no_strong_matches?: boolean }): Promise<RatedResult> {
 		return this.fetch(`/golden_run_results/${resultId}/rate`, { method: 'PATCH', body: JSON.stringify(data) });
+	}
+
+	// Search Lab
+	async getSearchConfigs(): Promise<SearchConfigSummary[]> {
+		return this.fetch('/search_configs');
+	}
+
+	async getSearchConfig(id: string): Promise<SearchConfigDetail> {
+		return this.fetch(`/search_configs/${id}`);
+	}
+
+	async createSearchConfig(data: { name: string; description?: string }): Promise<SearchConfigDetail> {
+		return this.fetch('/search_configs', { method: 'POST', body: JSON.stringify(data) });
+	}
+
+	async updateSearchConfig(id: string, data: Partial<SearchConfigDetail>): Promise<{ status: string; updated_at: string }> {
+		return this.fetch(`/search_configs/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+	}
+
+	async deleteSearchConfig(id: string): Promise<void> {
+		const url = `${this.baseUrl}/search_configs/${id}`;
+		const response = await fetch(url, { method: 'DELETE', credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+		if (!response.ok) throw new InkApiError(response.status, `Delete failed: ${response.statusText}`);
+	}
+
+	async cloneSearchConfig(id: string, data: { name: string; description?: string }): Promise<SearchConfigDetail> {
+		return this.fetch(`/search_configs/${id}/clone`, { method: 'POST', body: JSON.stringify(data) });
+	}
+
+	async activateSearchConfig(id: string): Promise<{ status: string; id: string; name: string }> {
+		return this.fetch(`/search_configs/${id}/activate`, { method: 'POST' });
+	}
+
+	async previewSearch(data: { query: string; config_id?: string; config?: Partial<SearchConfigDetail> }): Promise<PreviewResponse> {
+		return this.fetch('/search_configs/preview', { method: 'POST', body: JSON.stringify(data) });
 	}
 }
 
