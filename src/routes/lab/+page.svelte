@@ -29,6 +29,7 @@
 	let activePreview = $state<PreviewResponse | null>(null);
 	let experimentalPreview = $state<PreviewResponse | null>(null);
 	let previewing = $state(false);
+	let previewError = $state<string | null>(null);
 
 	// Collapsible sections
 	let showRanking = $state(true);
@@ -178,8 +179,8 @@
 	async function runPreview() {
 		if (!previewQuery.trim()) return;
 		previewing = true;
+		previewError = null;
 		try {
-			// Run with active config
 			const [active, experimental] = await Promise.all([
 				inkApi.previewSearch({ query: previewQuery }),
 				inkApi.previewSearch({
@@ -190,6 +191,11 @@
 			]);
 			activePreview = active;
 			experimentalPreview = experimental;
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : String(e);
+			previewError = `Preview failed: ${msg}. Try again -- this can happen during heavy database operations.`;
+			activePreview = null;
+			experimentalPreview = null;
 		} finally {
 			previewing = false;
 		}
@@ -649,6 +655,10 @@
 									{/if}
 								</div>
 							</div>
+						</div>
+					{:else if previewError}
+						<div class="py-4 px-4 rounded bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+							<p class="text-xs text-red-700 dark:text-red-300">{previewError}</p>
 						</div>
 					{:else}
 						<div class="py-8 text-center">
