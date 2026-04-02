@@ -487,6 +487,59 @@
 							<span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 {hp('series_collapse_enabled') ? 'translate-x-5' : ''}"></span>
 						</button>
 					</div>
+				<!-- Curated Lists Boost -->
+					<div class="param-group">
+						<div class="flex items-center justify-between mb-1">
+							<div class="flex items-center gap-1.5">
+								<label class="text-xs font-medium text-text-theme-primary">Curated Lists Boost</label>
+								<button onclick={() => expandedParam = expandedParam === 'lists_boost' ? null : 'lists_boost'} class="text-text-theme-tertiary hover:text-interactive transition-colors" title="Learn more">
+									<Info size={12} />
+								</button>
+							</div>
+							<span class="text-xs font-mono text-interactive tabular-nums">{(hp('lists_boost_weight') as number)?.toFixed(1)}</span>
+						</div>
+						<p class="text-[11px] text-text-theme-tertiary mb-2 leading-relaxed">Extra weight for documents on editorially curated HSDL topic lists. Only ~3,500 documents have list assignments.</p>
+						{#if expandedParam === 'lists_boost'}
+							<div class="text-[11px] text-text-theme-secondary bg-surface-secondary rounded px-3 py-2 mb-2 leading-relaxed">
+								HSDL maintains curated topic lists (e.g., "Countering Violent Extremism", "Maritime Domain", "Pandemics and Epidemics") with 102 lists covering 3,569 documents. Documents placed on these lists have been editorially selected as key resources for that topic. This boost rewards that curation.
+							</div>
+						{/if}
+						<input type="range" min="0" max="5" step="0.1"
+							value={hp('lists_boost_weight') as number}
+							oninput={(e) => dirtyHybrid = { ...dirtyHybrid, lists_boost_weight: parseFloat((e.target as HTMLInputElement).value) }}
+							disabled={config.locked}
+							class="lab-slider w-full" aria-label="Curated Lists Boost" />
+						<div class="flex justify-between text-[11px] text-text-theme-tertiary mt-1.5">
+							<span>0 (off)</span><span>1.0</span><span>5.0 (strong)</span>
+						</div>
+					</div>
+
+					<!-- Tab/Section Boost -->
+					<div class="param-group">
+						<div class="flex items-center justify-between mb-1">
+							<div class="flex items-center gap-1.5">
+								<label class="text-xs font-medium text-text-theme-primary">Tab/Section Boost</label>
+								<button onclick={() => expandedParam = expandedParam === 'tab_boost' ? null : 'tab_boost'} class="text-text-theme-tertiary hover:text-interactive transition-colors" title="Learn more">
+									<Info size={12} />
+								</button>
+							</div>
+							<span class="text-xs font-mono text-interactive tabular-nums">{(hp('tab_section_boost_weight') as number)?.toFixed(1)}</span>
+						</div>
+						<p class="text-[11px] text-text-theme-tertiary mb-2 leading-relaxed">Extra weight for documents assigned to an editorial section. Covers ~173K documents (55% of the collection).</p>
+						{#if expandedParam === 'tab_boost'}
+							<div class="text-[11px] text-text-theme-secondary bg-surface-secondary rounded px-3 py-2 mb-2 leading-relaxed">
+								Tab/Section categorizes documents into editorial sections (e.g., "Congressional reports", "Emergency management plans", "Theses and dissertations"). 173K documents (55% of the collection) have at least one section assignment. This boost gives a mild preference to categorized documents over uncategorized ones.
+							</div>
+						{/if}
+						<input type="range" min="0" max="5" step="0.1"
+							value={hp('tab_section_boost_weight') as number}
+							oninput={(e) => dirtyHybrid = { ...dirtyHybrid, tab_section_boost_weight: parseFloat((e.target as HTMLInputElement).value) }}
+							disabled={config.locked}
+							class="lab-slider w-full" aria-label="Tab/Section Boost" />
+						<div class="flex justify-between text-[11px] text-text-theme-tertiary mt-1.5">
+							<span>0 (off)</span><span>1.0</span><span>5.0 (strong)</span>
+						</div>
+					</div>
 				</div>
 			{/if}
 		</div>

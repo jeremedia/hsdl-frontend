@@ -65,6 +65,8 @@ export interface SearchConfigDetail extends SearchConfigSummary {
 		subject_boost_weight: number;
 		fetch_size_multiplier: number;
 		series_collapse_enabled: boolean;
+		lists_boost_weight: number;
+		tab_section_boost_weight: number;
 	};
 	notes: string | null;
 }
