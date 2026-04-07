@@ -63,10 +63,13 @@ export interface SearchConfigDetail extends SearchConfigSummary {
 		rrf_k: number;
 		title_boost_weight: number;
 		subject_boost_weight: number;
+		phrase_title_boost_weight: number;
+		publisher_authority_weight: number;
 		fetch_size_multiplier: number;
 		series_collapse_enabled: boolean;
 		lists_boost_weight: number;
 		tab_section_boost_weight: number;
+		publisher_authority_tiers?: Record<string, { weight: number; publishers: string[] }>;
 	};
 	notes: string | null;
 }

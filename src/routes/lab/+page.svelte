@@ -435,6 +435,62 @@
 						</div>
 					</div>
 
+					<!-- Phrase Title Boost -->
+					<div class="param-group">
+						<div class="flex items-center justify-between mb-1">
+							<div class="flex items-center gap-1.5">
+								<label class="text-xs font-medium text-text-theme-primary">Phrase Title Boost</label>
+								<button onclick={() => expandedParam = expandedParam === 'phrase_title_boost' ? null : 'phrase_title_boost'} class="text-text-theme-tertiary hover:text-interactive transition-colors" title="Learn more">
+									<Info size={12} />
+								</button>
+							</div>
+							<span class="text-xs font-mono text-interactive tabular-nums">{(hp('phrase_title_boost_weight') as number)?.toFixed(1)}</span>
+						</div>
+						<p class="text-[11px] text-text-theme-tertiary mb-2 leading-relaxed">Extra weight when the query appears as an exact phrase in the title. Stronger than word-match title boost for known-item searches.</p>
+						{#if expandedParam === 'phrase_title_boost'}
+							<div class="text-[11px] text-text-theme-secondary bg-surface-secondary rounded px-3 py-2 mb-2 leading-relaxed">
+								Uses PostgreSQL phraseto_tsquery which requires words to be adjacent and in order. "National Security Strategy" matches titles containing that exact phrase (207 docs) instead of any title with all three words scattered (481 docs). Default 2.0 is intentionally stronger than word-match title boost (1.0) because phrase matches are much more precise. Only fires for multi-word queries.
+							</div>
+						{/if}
+						<input type="range" min="0" max="5" step="0.1"
+							aria-label="Phrase Title Boost"
+							value={hp('phrase_title_boost_weight') as number}
+							oninput={(e) => dirtyHybrid = { ...dirtyHybrid, phrase_title_boost_weight: parseFloat((e.target as HTMLInputElement).value) }}
+							disabled={config.locked}
+							class="lab-slider w-full" />
+						<div class="flex justify-between text-[11px] text-text-theme-tertiary mt-1.5">
+							<span>0 (off)</span><span>2.0 (default)</span><span>5.0 (strong)</span>
+						</div>
+					</div>
+
+					<!-- Publisher Authority Boost -->
+					<div class="param-group">
+						<div class="flex items-center justify-between mb-1">
+							<div class="flex items-center gap-1.5">
+								<label class="text-xs font-medium text-text-theme-primary">Publisher Authority Boost</label>
+								<button onclick={() => expandedParam = expandedParam === 'publisher_boost' ? null : 'publisher_boost'} class="text-text-theme-tertiary hover:text-interactive transition-colors" title="Learn more">
+									<Info size={12} />
+								</button>
+							</div>
+							<span class="text-xs font-mono text-interactive tabular-nums">{(hp('publisher_authority_weight') as number)?.toFixed(1)}</span>
+						</div>
+						<p class="text-[11px] text-text-theme-tertiary mb-2 leading-relaxed">Extra weight for documents from authoritative publishers (DHS, FEMA, CRS, GAO, etc.). 0 disables. Tier list configurable in database.</p>
+						{#if expandedParam === 'publisher_boost'}
+							<div class="text-[11px] text-text-theme-secondary bg-surface-secondary rounded px-3 py-2 mb-2 leading-relaxed">
+								Documents from tiered publishers get a weighted boost. Tier 1 (full weight): DHS, FEMA, DoD, CRS, GAO, CBO, FBI, White House, CDC. Tier 2 (half weight): RAND, NPS, CSIS, CHDS. Uses the Publisher vocabulary field (88.9% coverage, 278K documents). A document with multiple tiered publishers gets one boost at the highest tier. Disabled by default — enable here to test impact with golden queries before activating.
+							</div>
+						{/if}
+						<input type="range" min="0" max="5" step="0.1"
+							aria-label="Publisher Authority Boost"
+							value={hp('publisher_authority_weight') as number}
+							oninput={(e) => dirtyHybrid = { ...dirtyHybrid, publisher_authority_weight: parseFloat((e.target as HTMLInputElement).value) }}
+							disabled={config.locked}
+							class="lab-slider w-full" />
+						<div class="flex justify-between text-[11px] text-text-theme-tertiary mt-1.5">
+							<span>0 (off)</span><span>0.5 (suggested)</span><span>5.0 (strong)</span>
+						</div>
+					</div>
+
 					<!-- Fetch Depth -->
 					<div class="param-group">
 						<div class="flex items-center justify-between mb-1">
