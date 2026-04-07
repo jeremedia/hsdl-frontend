@@ -235,7 +235,7 @@
 								prose-p:text-xs prose-p:leading-relaxed prose-p:my-2
 								prose-li:text-xs prose-li:leading-relaxed
 								prose-strong:text-text-theme-primary
-								prose-code:text-xs prose-code:bg-surface-secondary prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+								prose-code:text-xs prose-code:font-mono prose-code:font-normal prose-code:bg-surface-secondary prose-code:px-1 prose-code:py-0.5 prose-code:rounded
 								prose-table:text-xs
 								prose-th:text-left prose-th:px-3 prose-th:py-1.5 prose-th:bg-surface-secondary prose-th:font-semibold
 								prose-td:px-3 prose-td:py-1.5 prose-td:border-t prose-td:border-theme
