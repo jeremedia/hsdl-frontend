@@ -11,7 +11,7 @@
 
 	// URL-driven state with localStorage-backed defaults
 	let query = $derived($page.url.searchParams.get('q') || '');
-	let mode = $derived($page.url.searchParams.get('mode') || inkPrefs.get<string>('search.mode', 'semantic'));
+	let mode = $derived($page.url.searchParams.get('mode') || inkPrefs.get<string>('search.mode', 'combined'));
 	let currentPage = $derived(parseInt($page.url.searchParams.get('page') || '1'));
 
 	let searchInput = $state('');
@@ -22,7 +22,7 @@
 	const searchQuery = createQuery(
 		derived(page, ($p) => {
 			const q = $p.url.searchParams.get('q') || '';
-			const m = $p.url.searchParams.get('mode') || inkPrefs.get<string>('search.mode', 'semantic');
+			const m = $p.url.searchParams.get('mode') || inkPrefs.get<string>('search.mode', 'combined');
 			const cp = parseInt($p.url.searchParams.get('page') || '1');
 			return {
 				queryKey: ['ink', 'search', q, m, cp] as const,
@@ -123,11 +123,11 @@
 	<!-- Mode description -->
 	<p class="text-xs text-text-theme-tertiary">
 		{#if mode === 'semantic'}
-			Semantic search finds documents by meaning, even when exact words differ. Good for finding related content.
+			Semantic search finds documents by meaning, even when exact words differ.
 		{:else if mode === 'keyword'}
-			Keyword search matches exact terms in title and description. Use for duplicate checking by title.
+			Keyword search matches exact terms in title and description. Useful for duplicate checking.
 		{:else}
-			Combined search blends semantic meaning with keyword matching for balanced results.
+			Hybrid search — same engine as next.hsdl.org. Combines BM25 keyword ranking with semantic similarity.
 		{/if}
 	</p>
 
