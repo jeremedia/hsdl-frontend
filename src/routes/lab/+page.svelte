@@ -491,6 +491,64 @@
 						</div>
 					</div>
 
+					<!-- Recency Boost -->
+					<div class="param-group">
+						<div class="flex items-center justify-between mb-1">
+							<div class="flex items-center gap-1.5">
+								<label class="text-xs font-medium text-text-theme-primary">Recency Boost</label>
+								<button onclick={() => expandedParam = expandedParam === 'recency_boost' ? null : 'recency_boost'} class="text-text-theme-tertiary hover:text-interactive transition-colors" title="Learn more">
+									<Info size={12} />
+								</button>
+							</div>
+							<span class="text-xs font-mono text-interactive tabular-nums">{(hp('recency_boost_weight') as number)?.toFixed(1)}</span>
+						</div>
+						<p class="text-[11px] text-text-theme-tertiary mb-2 leading-relaxed">Newer documents score higher. Uses time-decay so recent docs get a boost without overwhelming relevance. 0 disables.</p>
+						{#if expandedParam === 'recency_boost'}
+							<div class="text-[11px] text-text-theme-secondary bg-surface-secondary rounded px-3 py-2 mb-2 leading-relaxed">
+								A 2025 document gets full boost. A 2013 document gets ~45% of the boost. A 2006 document gets ~34%. Documents without publish dates are unaffected (no penalty). The decay rate below controls how quickly the boost drops with age. 92% of documents have dates.
+							</div>
+						{/if}
+						<input type="range" min="0" max="5" step="0.1"
+							aria-label="Recency Boost"
+							value={hp('recency_boost_weight') as number}
+							oninput={(e) => dirtyHybrid = { ...dirtyHybrid, recency_boost_weight: parseFloat((e.target as HTMLInputElement).value) }}
+							disabled={config.locked}
+							class="lab-slider w-full" />
+						<div class="flex justify-between text-[11px] text-text-theme-tertiary mt-1.5">
+							<span>0 (off)</span><span>1.0 (gentle)</span><span>5.0 (strong)</span>
+						</div>
+					</div>
+
+					<!-- Recency Decay Rate (only visible when recency boost is active) -->
+					{#if (hp('recency_boost_weight') as number) > 0}
+					<div class="param-group">
+						<div class="flex items-center justify-between mb-1">
+							<div class="flex items-center gap-1.5">
+								<label class="text-xs font-medium text-text-theme-primary">Recency Decay Rate</label>
+								<button onclick={() => expandedParam = expandedParam === 'recency_decay' ? null : 'recency_decay'} class="text-text-theme-tertiary hover:text-interactive transition-colors" title="Learn more">
+									<Info size={12} />
+								</button>
+							</div>
+							<span class="text-xs font-mono text-interactive tabular-nums">{(hp('recency_decay_rate') as number)?.toFixed(2)}</span>
+						</div>
+						<p class="text-[11px] text-text-theme-tertiary mb-2 leading-relaxed">How fast the recency boost drops with age. Lower = older docs still get meaningful boost.</p>
+						{#if expandedParam === 'recency_decay'}
+							<div class="text-[11px] text-text-theme-secondary bg-surface-secondary rounded px-3 py-2 mb-2 leading-relaxed">
+								At 0.05: a 20-year-old doc keeps 50% of the boost. At 0.10 (default): 33%. At 0.50: only 9%. Use lower values for collections where older documents remain authoritative. Use higher values when the latest version is almost always preferred.
+							</div>
+						{/if}
+						<input type="range" min="0.01" max="1.0" step="0.01"
+							aria-label="Recency Decay Rate"
+							value={hp('recency_decay_rate') as number}
+							oninput={(e) => dirtyHybrid = { ...dirtyHybrid, recency_decay_rate: parseFloat((e.target as HTMLInputElement).value) }}
+							disabled={config.locked}
+							class="lab-slider w-full" />
+						<div class="flex justify-between text-[11px] text-text-theme-tertiary mt-1.5">
+							<span>0.01 (slow decay)</span><span>0.10 (default)</span><span>1.0 (sharp cutoff)</span>
+						</div>
+					</div>
+					{/if}
+
 					<!-- Fetch Depth -->
 					<div class="param-group">
 						<div class="flex items-center justify-between mb-1">
