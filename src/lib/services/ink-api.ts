@@ -65,8 +65,11 @@ export interface SearchConfigDetail extends SearchConfigSummary {
 		subject_boost_weight: number;
 		phrase_title_boost_weight: number;
 		publisher_authority_weight: number;
+		recency_boost_weight: number;
+		recency_decay_rate: number;
 		fetch_size_multiplier: number;
 		series_collapse_enabled: boolean;
+		bm25_enabled?: boolean;
 		lists_boost_weight: number;
 		tab_section_boost_weight: number;
 		publisher_authority_tiers?: Record<string, { weight: number; publishers: string[] }>;
