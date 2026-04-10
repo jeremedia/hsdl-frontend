@@ -435,6 +435,17 @@
 					disabled={config.locked}
 					onchange={(v) => dirtyHybrid = { ...dirtyHybrid, series_collapse_enabled: v }}
 				/>
+				<ParameterSlider
+					label="Quality Banner Threshold" paramKey="quality_banner_threshold"
+					value={hp('quality_banner_threshold') as number ?? 0.020}
+					min={0} max={0.100} step={0.001}
+					description="RRF score below which the 'no strong matches' banner appears."
+					detailedDescription="When the top result's RRF score is below this threshold, users see a 'no strong matches' notice. With RRF K=60, a dual-method rank-0 result scores 0.033 (above default). With K=120, it scores 0.017 (below default). Adjust this when changing RRF K."
+					scaleLabels={['0 (off)', '0.020 (default)', '0.100 (strict)']}
+					disabled={config.locked}
+					formatValue={(v) => v.toFixed(3)}
+					oninput={(v) => dirtyHybrid = { ...dirtyHybrid, quality_banner_threshold: v }}
+				/>
 			</AccordionSection>
 
 			<AccordionSection title="Language Rules" badge={synCount + excludedCount} open={false}>

@@ -73,6 +73,7 @@ export interface SearchConfigDetail extends SearchConfigSummary {
 		lists_boost_weight: number;
 		tab_section_boost_weight: number;
 		publisher_authority_tiers?: Record<string, { weight: number; publishers: string[] }>;
+		quality_banner_threshold: number;
 	};
 	notes: string | null;
 }
