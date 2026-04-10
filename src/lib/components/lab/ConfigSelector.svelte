@@ -20,7 +20,7 @@
 		loading: boolean;
 		error: string | null;
 		onSelect: (id: string) => void;
-		onClone: (id: string) => void;
+		onClone: (id: string, name: string) => void;
 		onCreate: (name: string) => void;
 		onActivate: (id: string) => void;
 		onDelete: (id: string) => void;
@@ -34,7 +34,11 @@
 
 	function handleCreate() {
 		if (!newName.trim()) return;
-		onCreate(newName.trim());
+		if (cloneSourceId) {
+			onClone(cloneSourceId, newName.trim());
+		} else {
+			onCreate(newName.trim());
+		}
 		showCreate = false;
 		newName = '';
 		cloneSourceId = null;
@@ -117,7 +121,7 @@
 					<Trash2 size={12} /> Delete
 				</button>
 			{/if}
-			<button onclick={() => onClone(configDetail.id)} class="text-text-theme-secondary hover:text-text-theme-primary flex items-center gap-1 transition-colors {configDetail.active && !configDetail.locked ? 'ml-auto' : ''}">
+			<button onclick={() => startClone(configDetail.id, configDetail.name)} class="text-text-theme-secondary hover:text-text-theme-primary flex items-center gap-1 transition-colors {configDetail.active && !configDetail.locked ? 'ml-auto' : ''}">
 				<Copy size={12} /> Clone
 			</button>
 			<button onclick={() => { cloneSourceId = null; newName = ''; showCreate = !showCreate; }} class="text-text-theme-secondary hover:text-text-theme-primary flex items-center gap-1 transition-colors">

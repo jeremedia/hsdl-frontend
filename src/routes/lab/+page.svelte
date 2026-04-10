@@ -130,9 +130,7 @@
 		}
 	}
 
-	async function handleClone(sourceId: string) {
-		const source = $configsQuery.data?.find(c => c.id === sourceId);
-		const name = `${source?.name || 'config'} (copy)`;
+	async function handleClone(sourceId: string, name: string) {
 		try {
 			const result = await inkApi.cloneSearchConfig(sourceId, { name });
 			selectedId = result.id;
