@@ -36,7 +36,7 @@
 		/>
 	</button>
 	{#if isOpen}
-		<div class="border-t border-theme px-4 pb-5 pt-4 space-y-6">
+		<div class="border-t border-theme px-4 pb-4 pt-3 space-y-0">
 			{#if children}{@render children()}{/if}
 		</div>
 	{/if}

@@ -39,14 +39,14 @@
 </script>
 
 <div class="param-group">
-	<div class="flex items-center justify-between mb-1">
+	<div class="flex items-center justify-between mb-0.5">
 		<div class="flex items-center gap-1.5">
 			<span class="text-xs font-medium text-text-theme-primary">{label}</span>
 			<InfoPopover {paramKey} content={detailedDescription} />
 		</div>
 		<span class="text-xs font-mono text-interactive tabular-nums">{displayValue}</span>
 	</div>
-	<p class="text-[11px] text-text-theme-tertiary mb-2 leading-relaxed">{description}</p>
+	<p class="text-[11px] text-text-theme-tertiary mb-1.5 leading-snug">{description}</p>
 	<input
 		type="range"
 		{min}
@@ -58,7 +58,7 @@
 		class="lab-slider w-full"
 		oninput={handleInput}
 	/>
-	<div class="flex justify-between text-[11px] text-text-theme-tertiary mt-1.5">
+	<div class="flex justify-between text-[10px] text-text-theme-tertiary mt-1 opacity-70">
 		<span>{scaleLabels[0]}</span>
 		<span>{scaleLabels[1]}</span>
 		<span>{scaleLabels[2]}</span>
@@ -121,7 +121,8 @@
 		background: var(--color-gray-300);
 	}
 	:global(.param-group + .param-group) {
-		padding-top: 0.25rem;
-		border-top: 1px solid var(--color-border);
+		padding-top: 0.75rem;
+		margin-top: 0.75rem;
+		border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
 	}
 </style>

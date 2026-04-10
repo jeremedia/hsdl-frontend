@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { SearchConfigSummary, SearchConfigDetail } from '$lib/services/ink-api';
-	import { Lock, Copy, Trash2, Zap, Plus, Check, FlaskConical } from 'lucide-svelte';
+	import { Lock, Copy, Trash2, Zap, Plus, Check, FlaskConical, Pencil } from 'lucide-svelte';
 
 	let {
 		configs,
@@ -13,6 +13,7 @@
 		onActivate,
 		onDelete,
 		onRetry,
+		onRename,
 		configDetail
 	}: {
 		configs: SearchConfigSummary[] | undefined;
@@ -25,12 +26,27 @@
 		onActivate: (id: string) => void;
 		onDelete: (id: string) => void;
 		onRetry: () => void;
+		onRename: (id: string, name: string) => void;
 		configDetail: SearchConfigDetail | undefined;
 	} = $props();
 
 	let showCreate = $state(false);
 	let newName = $state('');
 	let cloneSourceId = $state<string | null>(null);
+	let editingName = $state(false);
+	let editName = $state('');
+	let renameCommitted = false;
+
+	function commitRename() {
+		if (renameCommitted) return;
+		renameCommitted = true;
+		if (editName.trim() && editName.trim() !== configDetail?.name) {
+			onRename(configDetail!.id, editName.trim());
+		}
+		editingName = false;
+		// Reset guard after tick so next rename works
+		setTimeout(() => { renameCommitted = false; }, 0);
+	}
 
 	function handleCreate() {
 		if (!newName.trim()) return;
@@ -51,82 +67,120 @@
 	}
 </script>
 
-<div class="space-y-3">
+<div class="card overflow-hidden">
 	<!-- Config pills -->
-	{#if loading}
-		<div class="flex gap-2 flex-wrap">
-			{#each Array(3) as _}
-				<div class="skeleton h-7 w-24 rounded-full"></div>
-			{/each}
-		</div>
-	{:else if error}
-		<div class="card p-4 text-center">
-			<p class="text-error text-sm mb-3">Failed to load configurations: {error}</p>
-			<button onclick={onRetry} class="btn btn-primary text-xs py-1 px-3">Retry</button>
-		</div>
-	{:else if configs}
-		{#if configs.length === 0}
-			<div class="card p-8 text-center">
-				<FlaskConical size={32} class="mx-auto mb-3 text-text-theme-tertiary opacity-40" />
-				<p class="text-sm text-text-theme-secondary mb-1">No search configurations yet</p>
-				<p class="text-xs text-text-theme-tertiary">Create a configuration to start tuning search parameters.</p>
-			</div>
-		{:else}
+	<div class="px-4 py-3">
+		{#if loading}
 			<div class="flex gap-2 flex-wrap">
-				{#each configs as c (c.id)}
-					<button
-						onclick={() => onSelect(c.id)}
-						class="config-pill px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150
-							{selectedId === c.id ? 'border-interactive bg-interactive/10 text-interactive shadow-sm' : 'border-[var(--color-border)] text-text-theme-secondary hover:border-interactive/50 hover:text-text-theme-primary'}
-							{c.active ? 'ring-2 ring-green-500/30' : ''}"
-					>
-						{#if c.locked}<Lock size={10} class="inline mr-1 opacity-60" />{/if}
-						{c.name}
-						{#if c.active}<span class="ml-1.5 text-green-600 dark:text-green-400 text-[11px] font-bold uppercase tracking-wider">Live</span>{/if}
-					</button>
+				{#each Array(3) as _}
+					<div class="skeleton h-7 w-24 rounded-full"></div>
 				{/each}
 			</div>
-		{/if}
-	{/if}
-
-	<!-- Create/Clone form -->
-	{#if showCreate}
-		<form onsubmit={(e) => { e.preventDefault(); handleCreate(); }} class="card p-4 space-y-3">
-			<div>
-				<label for="config-name-input" class="text-xs font-medium text-text-theme-secondary block mb-1">{cloneSourceId ? 'Clone as' : 'New config name'}</label>
-				<input id="config-name-input" bind:value={newName} class="input text-xs py-1.5 w-full" placeholder="e.g., Experiment March 2026" />
+		{:else if error}
+			<div class="text-center py-2">
+				<p class="text-error text-sm mb-3">Failed to load configurations: {error}</p>
+				<button onclick={onRetry} class="btn btn-primary text-xs py-1 px-3">Retry</button>
 			</div>
-			<div class="flex gap-2">
-				<button type="submit" class="btn btn-primary text-xs py-1 px-3">Create</button>
-				<button type="button" onclick={() => showCreate = false} class="btn btn-outline text-xs py-1 px-3">Cancel</button>
-			</div>
-		</form>
-	{/if}
-
-	<!-- Config info bar -->
-	{#if configDetail}
-		<div class="card px-4 py-3 flex items-center gap-4 text-xs text-text-theme-tertiary">
-			{#if configDetail.locked}
-				<span class="text-amber-600 font-medium flex items-center gap-1"><Lock size={12} /> Locked -- clone to experiment</span>
-			{/if}
-			{#if !configDetail.active}
-				<button onclick={() => onActivate(configDetail.id)} class="text-green-600 hover:text-green-700 font-medium flex items-center gap-1 transition-colors">
-					<Zap size={12} /> Activate this config
-				</button>
+		{:else if configs}
+			{#if configs.length === 0}
+				<div class="py-4 text-center">
+					<FlaskConical size={28} class="mx-auto mb-2 text-text-theme-tertiary opacity-40" />
+					<p class="text-sm text-text-theme-secondary mb-1">No search configurations yet</p>
+					<p class="text-xs text-text-theme-tertiary">Create one to start tuning.</p>
+				</div>
 			{:else}
-				<span class="text-green-600 font-medium flex items-center gap-1"><Check size={12} /> Currently live</span>
+				<div class="flex gap-1.5 flex-wrap">
+					{#each configs as c (c.id)}
+						<button
+							onclick={() => onSelect(c.id)}
+							class="config-pill px-3 py-1 rounded-full text-xs font-medium border transition-all duration-150
+								{selectedId === c.id ? 'border-interactive bg-interactive/10 text-interactive' : 'border-[var(--color-border)] text-text-theme-secondary hover:border-interactive/50 hover:text-text-theme-primary'}
+								{c.active ? 'ring-2 ring-green-500/30' : ''}"
+						>
+							{#if c.locked}<Lock size={10} class="inline mr-1 opacity-60" />{/if}
+							{c.name}
+							{#if c.active}<span class="ml-1 text-green-600 dark:text-green-400 text-[10px] font-bold uppercase tracking-wider">Live</span>{/if}
+						</button>
+					{/each}
+				</div>
 			{/if}
-			{#if !configDetail.active && !configDetail.locked}
-				<button onclick={() => onDelete(configDetail.id)} class="text-red-500 hover:text-red-600 ml-auto flex items-center gap-1 transition-colors">
-					<Trash2 size={12} /> Delete
+		{/if}
+	</div>
+
+	<!-- Config info bar + actions -->
+	{#if configDetail}
+		<div class="border-t border-theme px-4 py-2 flex items-center gap-1 text-xs text-text-theme-tertiary">
+			<!-- Left: status -->
+			<div class="flex items-center gap-2 mr-auto">
+				{#if editingName}
+					<form onsubmit={(e) => { e.preventDefault(); commitRename(); }} class="flex items-center gap-2">
+						<input bind:value={editName} class="input text-xs py-0.5 px-2 w-44" autofocus
+							onkeydown={(e) => { if (e.key === 'Escape') { editingName = false; } }}
+							onblur={() => commitRename()}
+						/>
+					</form>
+				{:else}
+					{#if configDetail.locked}
+						<span class="text-amber-600 font-medium flex items-center gap-1 text-[11px]"><Lock size={11} /> Locked</span>
+					{:else if configDetail.active}
+						<span class="text-green-600 font-medium flex items-center gap-1 text-[11px]"><Check size={11} /> Live</span>
+					{:else}
+						<button onclick={() => onActivate(configDetail.id)} class="text-green-600 hover:text-green-700 font-medium flex items-center gap-1 text-[11px] transition-colors">
+							<Zap size={11} /> Activate
+						</button>
+					{/if}
+				{/if}
+			</div>
+
+			<!-- Right: actions grouped with subtle separators -->
+			<div class="flex items-center">
+				{#if !configDetail.locked && !editingName}
+					<button onclick={() => { editName = configDetail.name; editingName = true; }} class="config-action-btn" title="Rename config">
+						<Pencil size={11} /> Rename
+					</button>
+				{/if}
+				<button onclick={() => startClone(configDetail.id, configDetail.name)} class="config-action-btn">
+					<Copy size={11} /> Clone
 				</button>
-			{/if}
-			<button onclick={() => startClone(configDetail.id, configDetail.name)} class="text-text-theme-secondary hover:text-text-theme-primary flex items-center gap-1 transition-colors {configDetail.active && !configDetail.locked ? 'ml-auto' : ''}">
-				<Copy size={12} /> Clone
-			</button>
-			<button onclick={() => { cloneSourceId = null; newName = ''; showCreate = !showCreate; }} class="text-text-theme-secondary hover:text-text-theme-primary flex items-center gap-1 transition-colors">
-				<Plus size={14} /> New
-			</button>
+				<button onclick={() => { cloneSourceId = null; newName = ''; showCreate = !showCreate; }} class="config-action-btn">
+					<Plus size={12} /> New
+				</button>
+				{#if !configDetail.active && !configDetail.locked}
+					<span class="w-px h-3.5 bg-[var(--color-border)] mx-1"></span>
+					<button onclick={() => onDelete(configDetail.id)} class="config-action-btn text-red-400 hover:text-red-500">
+						<Trash2 size={11} />
+					</button>
+				{/if}
+			</div>
+		</div>
+	{/if}
+
+	<!-- Create/Clone form (inline) -->
+	{#if showCreate}
+		<div class="border-t border-theme px-4 py-3">
+			<form onsubmit={(e) => { e.preventDefault(); handleCreate(); }} class="flex items-center gap-2">
+				<label for="config-name-input" class="text-xs text-text-theme-secondary whitespace-nowrap">{cloneSourceId ? 'Clone as:' : 'Name:'}</label>
+				<input id="config-name-input" bind:value={newName} class="input text-xs py-1 flex-1" placeholder="e.g., Experiment April 2026" autofocus />
+				<button type="submit" class="btn btn-primary text-xs py-1 px-3">Create</button>
+				<button type="button" onclick={() => showCreate = false} class="btn btn-outline text-xs py-1 px-2.5">Cancel</button>
+			</form>
 		</div>
 	{/if}
 </div>
+
+<style>
+	.config-action-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.25rem 0.5rem;
+		border-radius: 0.25rem;
+		font-size: 0.6875rem;
+		color: var(--color-text-secondary);
+		transition: color 150ms ease, background-color 150ms ease;
+	}
+	.config-action-btn:hover {
+		color: var(--color-text-primary);
+		background-color: color-mix(in srgb, var(--color-interactive) 8%, transparent);
+	}
+</style>

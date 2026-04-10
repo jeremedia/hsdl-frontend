@@ -47,7 +47,8 @@
 
 <style>
 	.param-group + :global(.param-group) {
-		padding-top: 0.25rem;
-		border-top: 1px solid var(--color-border);
+		padding-top: 0.75rem;
+		margin-top: 0.75rem;
+		border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
 	}
 </style>

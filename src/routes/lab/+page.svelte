@@ -140,6 +140,16 @@
 		}
 	}
 
+	async function handleRename(id: string, name: string) {
+		try {
+			await inkApi.updateSearchConfig(id, { name } as Partial<SearchConfigDetail>);
+			queryClient.invalidateQueries({ queryKey: ['ink', 'search_configs'] });
+			queryClient.invalidateQueries({ queryKey: ['ink', 'search_config', id] });
+		} catch {
+			showSaveToast('Rename failed', 'error');
+		}
+	}
+
 	// --- Preview ---
 	const STORAGE_KEY = 'ink-lab-preview-query';
 	let previewQuery = $state(
@@ -276,12 +286,12 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <!-- Header -->
-<div class="flex items-center justify-between mb-4">
+<div class="flex items-center justify-between mb-3">
 	<div>
-		<h1 class="text-xl font-bold text-text-theme-primary">Search Lab</h1>
-		<p class="text-xs text-text-theme-tertiary mt-0.5">Tune search ranking, synonyms, and behavior. Changes only go live when you activate a config.</p>
+		<h1 class="text-lg font-bold text-text-theme-primary">Search Lab</h1>
+		<p class="text-[11px] text-text-theme-tertiary mt-0.5 leading-snug">Tune ranking, synonyms, and behavior. Changes go live when you activate a config.</p>
 	</div>
-	<div class="flex gap-2">
+	<div class="flex gap-1.5">
 		{#if isDirty && !config?.locked}
 			<button onclick={() => clearDirty()} class="btn btn-outline text-xs py-1 px-2.5">Revert</button>
 			<button onclick={() => $saveMutation.mutate()} disabled={$saveMutation.isPending} class="btn btn-primary text-xs py-1 px-2.5">
@@ -292,9 +302,9 @@
 </div>
 
 <!-- Two-column layout -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 	<!-- LEFT: Parameters -->
-	<div class="space-y-4">
+	<div class="space-y-3">
 		<ConfigSelector
 			configs={$configsQuery.data}
 			{selectedId}
@@ -305,6 +315,7 @@
 			onCreate={handleCreate}
 			onActivate={(id) => $activateMutation.mutate(id)}
 			onDelete={(id) => $deleteMutation.mutate(id)}
+			onRename={handleRename}
 			onRetry={() => $configsQuery.refetch()}
 			configDetail={config}
 		/>
@@ -478,7 +489,7 @@
 	</div>
 
 	<!-- RIGHT: Preview (sticky) -->
-	<div class="lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+	<div class="lg:sticky lg:top-3 lg:self-start lg:max-h-[calc(100vh-1.5rem)] lg:overflow-y-auto">
 		<PreviewPanel
 			{previewQuery}
 			onQueryChange={(q) => previewQuery = q}
@@ -488,6 +499,8 @@
 			{previewing}
 			{previewError}
 			{autoPreviewPending}
+			activeConfigName={$configsQuery.data?.find(c => c.active)?.name ?? ''}
+			comparisonConfigName={config?.name ?? ''}
 		/>
 	</div>
 </div>

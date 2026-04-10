@@ -10,9 +10,9 @@ const config = {
 			base: '/ink'
 		},
 		adapter: adapter({
-			// Static adapter for SPA mode
-			pages: 'build',
-			assets: 'build',
+			// Build directly into Rails public/ink/ (no copy step needed)
+			pages: '../public/ink',
+			assets: '../public/ink',
 			fallback: 'index.html', // SPA fallback
 			precompress: true,
 			strict: true

@@ -10,7 +10,9 @@
 		experimentalPreview,
 		previewing,
 		previewError,
-		autoPreviewPending = false
+		autoPreviewPending = false,
+		activeConfigName = '',
+		comparisonConfigName = ''
 	}: {
 		previewQuery: string;
 		onQueryChange: (query: string) => void;
@@ -20,18 +22,20 @@
 		previewing: boolean;
 		previewError: string | null;
 		autoPreviewPending?: boolean;
+		activeConfigName?: string;
+		comparisonConfigName?: string;
 	} = $props();
 </script>
 
 <div class="card overflow-hidden">
-	<div class="px-4 py-3">
-		<h2 class="text-sm font-semibold text-text-theme-primary mb-1">Live Preview</h2>
-		<p class="text-[11px] text-text-theme-tertiary mb-3 leading-relaxed">
-			Compare results between the active config and your current settings.
-			<kbd class="kbd">Cmd+Enter</kbd> to run.
-		</p>
+	<!-- Search bar -->
+	<div class="px-4 pt-3 pb-3">
+		<div class="flex items-center justify-between mb-2">
+			<h2 class="text-sm font-semibold text-text-theme-primary">Live Preview</h2>
+			<span class="text-[10px] text-text-theme-tertiary"><kbd class="kbd text-[10px]">Cmd+Enter</kbd> to run</span>
+		</div>
 
-		<div class="flex gap-2 mb-4">
+		<div class="flex gap-2">
 			<div class="relative flex-1">
 				<input
 					value={previewQuery}
@@ -51,86 +55,128 @@
 				{#if previewing}Running...{:else}Preview{/if}
 			</button>
 		</div>
+	</div>
 
-		{#if activePreview && experimentalPreview}
-			{#if autoPreviewPending}
-				<p class="text-[10px] text-text-theme-tertiary mb-2 animate-pulse">updating...</p>
-			{/if}
-
-			<div class="grid grid-cols-2 gap-4">
-				<!-- Active config results -->
-				<div>
-					<h3 class="text-[11px] font-semibold text-text-theme-secondary mb-2 uppercase tracking-wider flex items-center gap-2">
-						Active Config
-						<span class="font-mono font-normal text-green-600">{activePreview.timing_ms}ms</span>
-					</h3>
-					<div class="space-y-2">
-						{#each activePreview.results as r (r.uuid)}
-							<a href="/ink/documents/{r.uuid}" target="_blank" rel="noopener" class="block text-xs py-2.5 px-3 rounded border border-theme bg-surface-elevated hover:border-interactive/50 transition-colors cursor-pointer no-underline">
-								<div class="flex items-baseline gap-1.5">
-									<span class="text-text-theme-tertiary font-mono text-[10px] tabular-nums">#{r.rank}</span>
-									<span class="text-text-theme-primary leading-snug">{r.title?.slice(0, 80)}{(r.title?.length ?? 0) > 80 ? '...' : ''}</span>
-								</div>
-								<div class="flex gap-1 mt-1">
-									{#each r.matched_by as badge}
-										<span class="text-[9px] px-1.5 py-0.5 rounded bg-interactive/10 text-interactive font-medium">{badge}</span>
-									{/each}
-									<span class="text-[9px] text-text-theme-tertiary ml-auto tabular-nums">{r.rrf_score?.toFixed(4)}</span>
-								</div>
-							</a>
-						{/each}
-						{#if activePreview.results.length === 0}
-							<p class="text-xs text-text-theme-tertiary text-center py-4">No results</p>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Experimental config results -->
-				<div>
-					<h3 class="text-[11px] font-semibold text-text-theme-secondary mb-2 uppercase tracking-wider flex items-center gap-2">
-						This Config
-						<span class="font-mono font-normal text-blue-500">{experimentalPreview.timing_ms}ms</span>
-					</h3>
-					<div class="space-y-2">
-						{#each experimentalPreview.results as r (r.uuid)}
-							{@const activeRank = activePreview.results.find(a => a.uuid === r.uuid)?.rank}
-							{@const rankDelta = activeRank ? activeRank - r.rank : null}
-							<a href="/ink/documents/{r.uuid}" target="_blank" rel="noopener" class="block text-xs py-2.5 px-3 rounded border border-theme bg-surface-elevated hover:border-interactive/50 transition-colors cursor-pointer no-underline {!activeRank ? 'ring-1 ring-blue-400/40' : ''}">
-								<div class="flex items-baseline gap-1.5">
-									<span class="text-text-theme-tertiary font-mono text-[10px] tabular-nums">#{r.rank}</span>
-									<span class="text-text-theme-primary leading-snug">{r.title?.slice(0, 80)}{(r.title?.length ?? 0) > 80 ? '...' : ''}</span>
-								</div>
-								<div class="flex gap-1 mt-1">
-									{#each r.matched_by as badge}
-										<span class="text-[9px] px-1.5 py-0.5 rounded bg-interactive/10 text-interactive font-medium">{badge}</span>
-									{/each}
-									{#if rankDelta !== null && rankDelta !== 0}
-										<span class="text-[9px] ml-auto font-medium tabular-nums {rankDelta > 0 ? 'text-green-600' : 'text-red-500'}">
-											{rankDelta > 0 ? `+${rankDelta}` : rankDelta}
-										</span>
-									{:else if !activeRank}
-										<span class="text-[9px] ml-auto font-medium text-blue-500">new</span>
-									{:else}
-										<span class="text-[9px] text-text-theme-tertiary ml-auto tabular-nums">{r.rrf_score?.toFixed(4)}</span>
-									{/if}
-								</div>
-							</a>
-						{/each}
-						{#if experimentalPreview.results.length === 0}
-							<p class="text-xs text-text-theme-tertiary text-center py-4">No results</p>
-						{/if}
-					</div>
-				</div>
-			</div>
-		{:else if previewError}
-			<div class="py-4 px-4 rounded bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-				<p class="text-xs text-red-700 dark:text-red-300">{previewError}</p>
-			</div>
-		{:else}
-			<div class="py-8 text-center">
-				<Search size={24} class="mx-auto mb-2 text-text-theme-tertiary opacity-30" />
-				<p class="text-xs text-text-theme-tertiary">Enter a query above to compare search results.</p>
+	{#if activePreview && experimentalPreview}
+		{#if autoPreviewPending}
+			<div class="px-4 pb-1">
+				<p class="text-[10px] text-text-theme-tertiary animate-pulse">updating...</p>
 			</div>
 		{/if}
-	</div>
+
+		<div class="grid grid-cols-2 border-t border-theme">
+			<!-- Active config results -->
+			<div class="border-r border-theme">
+				<div class="px-3 py-2 bg-surface-secondary/50 border-b border-theme flex items-baseline justify-between">
+					<h3 class="text-[11px] font-semibold text-text-theme-secondary uppercase tracking-wider">
+						Active
+					</h3>
+					<span class="text-[11px] text-green-600 font-medium">{activeConfigName || activePreview.config_name}</span>
+				</div>
+				<div class="preview-results-list">
+					{#each activePreview.results as r (r.uuid)}
+						<a href="/ink/documents/{r.uuid}" target="_blank" rel="noopener" class="preview-result-item">
+							<div class="flex items-start gap-1.5">
+								<span class="text-text-theme-tertiary font-mono text-[10px] tabular-nums shrink-0 pt-px">#{r.rank}</span>
+								<span class="text-[11px] text-text-theme-primary leading-snug line-clamp-2">{r.title}</span>
+							</div>
+							<div class="flex items-center gap-1 mt-1">
+								{#each r.matched_by as badge}
+									<span class="preview-badge">{badge}</span>
+								{/each}
+								<span class="text-[9px] text-text-theme-tertiary ml-auto tabular-nums font-mono">{r.rrf_score?.toFixed(4)}</span>
+							</div>
+						</a>
+					{/each}
+					{#if activePreview.results.length === 0}
+						<p class="text-xs text-text-theme-tertiary text-center py-4">No results</p>
+					{/if}
+				</div>
+				<div class="px-3 py-1.5 border-t border-theme">
+					<span class="font-mono text-[10px] text-text-theme-tertiary">{activePreview.timing_ms}ms</span>
+				</div>
+			</div>
+
+			<!-- Experimental config results -->
+			<div>
+				<div class="px-3 py-2 bg-surface-secondary/50 border-b border-theme flex items-baseline justify-between">
+					<h3 class="text-[11px] font-semibold text-text-theme-secondary uppercase tracking-wider">
+						Comparison
+					</h3>
+					<span class="text-[11px] text-blue-500 font-medium">{comparisonConfigName || experimentalPreview.config_name}</span>
+				</div>
+				<div class="preview-results-list">
+					{#each experimentalPreview.results as r (r.uuid)}
+						{@const activeRank = activePreview.results.find(a => a.uuid === r.uuid)?.rank}
+						{@const rankDelta = activeRank ? activeRank - r.rank : null}
+						<a href="/ink/documents/{r.uuid}" target="_blank" rel="noopener" class="preview-result-item {!activeRank ? 'ring-1 ring-inset ring-blue-400/30' : ''}">
+							<div class="flex items-start gap-1.5">
+								<span class="text-text-theme-tertiary font-mono text-[10px] tabular-nums shrink-0 pt-px">#{r.rank}</span>
+								<span class="text-[11px] text-text-theme-primary leading-snug line-clamp-2">{r.title}</span>
+							</div>
+							<div class="flex items-center gap-1 mt-1">
+								{#each r.matched_by as badge}
+									<span class="preview-badge">{badge}</span>
+								{/each}
+								{#if rankDelta !== null && rankDelta !== 0}
+									<span class="text-[9px] ml-auto font-semibold tabular-nums {rankDelta > 0 ? 'text-green-500' : 'text-red-400'}">
+										{rankDelta > 0 ? `+${rankDelta}` : rankDelta}
+									</span>
+								{:else if !activeRank}
+									<span class="text-[9px] ml-auto font-semibold text-blue-400">new</span>
+								{:else}
+									<span class="text-[9px] text-text-theme-tertiary ml-auto tabular-nums font-mono">{r.rrf_score?.toFixed(4)}</span>
+								{/if}
+							</div>
+						</a>
+					{/each}
+					{#if experimentalPreview.results.length === 0}
+						<p class="text-xs text-text-theme-tertiary text-center py-4">No results</p>
+					{/if}
+				</div>
+				<div class="px-3 py-1.5 border-t border-theme">
+					<span class="font-mono text-[10px] text-text-theme-tertiary">{experimentalPreview.timing_ms}ms</span>
+				</div>
+			</div>
+		</div>
+	{:else if previewError}
+		<div class="mx-4 mb-3 py-3 px-4 rounded bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+			<p class="text-xs text-red-700 dark:text-red-300">{previewError}</p>
+		</div>
+	{:else}
+		<div class="py-8 text-center border-t border-theme">
+			<Search size={20} class="mx-auto mb-1.5 text-text-theme-tertiary opacity-25" />
+			<p class="text-[11px] text-text-theme-tertiary">Enter a query to compare search results</p>
+		</div>
+	{/if}
 </div>
+
+<style>
+	.preview-results-list {
+		display: flex;
+		flex-direction: column;
+	}
+	.preview-result-item {
+		display: block;
+		padding: 0.375rem 0.75rem;
+		border-bottom: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+		transition: background-color 150ms ease;
+		cursor: pointer;
+		text-decoration: none;
+	}
+	.preview-result-item:last-child {
+		border-bottom: none;
+	}
+	.preview-result-item:hover {
+		background-color: color-mix(in srgb, var(--color-interactive) 5%, transparent);
+	}
+	.preview-badge {
+		font-size: 0.5625rem;
+		padding: 0.0625rem 0.375rem;
+		border-radius: 0.1875rem;
+		background: color-mix(in srgb, var(--color-interactive) 12%, transparent);
+		color: var(--color-interactive);
+		font-weight: 500;
+		line-height: 1.4;
+	}
+</style>
