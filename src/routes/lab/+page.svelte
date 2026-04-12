@@ -437,6 +437,14 @@
 					oninput={(v) => dirtyHybrid = { ...dirtyHybrid, fetch_size_multiplier: v }}
 				/>
 				<ParameterToggle
+					label="BM25 Keyword Ranking" paramKey="bm25_enabled"
+					value={hp('bm25_enabled') as boolean ?? true}
+					description="Use BM25 scoring instead of ts_rank for keyword search ordering."
+					detailedDescription="BM25 adds IDF weighting (rare terms score higher), term frequency saturation, and document length normalization. Dramatically improves ranking for common terms. Example: 'National Defense Strategy' returns the actual NDS document instead of unrelated results. Requires pg_textsearch extension."
+					disabled={config.locked}
+					onchange={(v) => dirtyHybrid = { ...dirtyHybrid, bm25_enabled: v }}
+				/>
+				<ParameterToggle
 					label="Series Collapse" paramKey="series_collapse_enabled"
 					value={hp('series_collapse_enabled') as boolean ?? true}
 					description="Group editions of the same series, showing only the newest."
