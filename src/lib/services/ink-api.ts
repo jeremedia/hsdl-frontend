@@ -166,6 +166,93 @@ export interface EnrichmentStatus {
 	};
 }
 
+// Feedback Dashboard types
+
+export interface FeedbackSummary {
+	total: number;
+	open: number;
+	investigating: number;
+	needs_feedback: number;
+	resolved: number;
+	wont_fix: number;
+	duplicate: number;
+	resolution_rate: number;
+	resolved_last_7d: number;
+	avg_resolution_days: number | null;
+}
+
+export interface FeedbackReporter {
+	name: string;
+	count: number;
+	resolved: number;
+}
+
+export interface FeedbackTimelineDay {
+	date: string;
+	opened: number;
+	resolved: number;
+}
+
+export interface FeedbackIssue {
+	id: string;
+	full_id: string;
+	title: string;
+	category: string;
+	priority: string;
+	status: string;
+	reported_by: string | null;
+	notes_count: number;
+	created_at: string;
+	age_days: number;
+}
+
+export interface FeedbackIssueExpanded extends FeedbackIssue {
+	description: string | null;
+	search_query: string | null;
+	url_example: string | null;
+	doc_id: string | null;
+	resolution: string | null;
+	resolved_at: string | null;
+	fixed_in_version: string | null;
+	notes: Array<{ text: string; author: string; timestamp: string }>;
+}
+
+export interface FeedbackIssueFilters {
+	statuses: string[];
+	categories: string[];
+	priorities: string[];
+	reporters: string[];
+}
+
+export interface FeedbackIssueListParams {
+	page?: number;
+	per_page?: number;
+	sort?: string;
+	direction?: 'asc' | 'desc';
+	status?: string;
+	category?: string;
+	priority?: string;
+	reporter?: string;
+	q?: string;
+}
+
+export interface FeedbackIssueListResponse {
+	total_count: number;
+	page: number;
+	per_page: number;
+	total_pages: number;
+	filters: FeedbackIssueFilters;
+	results: FeedbackIssueExpanded[];
+}
+
+export interface FeedbackDashboardData {
+	summary: FeedbackSummary;
+	by_category: Record<string, number>;
+	by_reporter: FeedbackReporter[];
+	timeline: FeedbackTimelineDay[];
+	recent: FeedbackIssue[];
+}
+
 export interface DocumentSearchParams {
 	page?: number;
 	per_page?: number;
@@ -345,6 +432,34 @@ class InkApiClient {
 	// Dashboard
 	async getDashboard(): Promise<DashboardData> {
 		return this.fetch('/dashboard');
+	}
+
+	// Feedback
+	async getFeedbackDashboard(): Promise<FeedbackDashboardData> {
+		return this.fetch('/issues');
+	}
+
+	async getFeedbackList(params: FeedbackIssueListParams = {}): Promise<FeedbackIssueListResponse> {
+		const searchParams = new URLSearchParams();
+		if (params.page) searchParams.set('page', String(params.page));
+		if (params.per_page) searchParams.set('per_page', String(params.per_page));
+		if (params.sort) searchParams.set('sort', params.sort);
+		if (params.direction) searchParams.set('direction', params.direction);
+		if (params.status) searchParams.set('status', params.status);
+		if (params.category) searchParams.set('category', params.category);
+		if (params.priority) searchParams.set('priority', params.priority);
+		if (params.reporter) searchParams.set('reporter', params.reporter);
+		if (params.q) searchParams.set('q', params.q);
+		const qs = searchParams.toString();
+		return this.fetch(`/issues/list${qs ? '?' + qs : ''}`);
+	}
+
+	async updateIssuePriority(id: string, priority: string): Promise<FeedbackIssueExpanded> {
+		return this.fetch(`/issues/${id}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ priority })
+		});
 	}
 
 	// Enrichment
