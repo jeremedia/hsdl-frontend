@@ -200,6 +200,7 @@ export interface FeedbackIssue {
 	category: string;
 	priority: string;
 	status: string;
+	reporter_review_status: string | null;
 	reported_by: string | null;
 	notes_count: number;
 	created_at: string;
@@ -214,6 +215,7 @@ export interface FeedbackIssueExpanded extends FeedbackIssue {
 	resolution: string | null;
 	resolved_at: string | null;
 	fixed_in_version: string | null;
+	review_steps: string | null;
 	notes: Array<{ text: string; author: string; timestamp: string }>;
 }
 

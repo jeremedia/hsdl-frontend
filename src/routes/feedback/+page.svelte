@@ -155,6 +155,8 @@
 			case 'open': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
 			case 'investigating': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
 			case 'needs_feedback': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300';
+			case 'dev_review': return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300';
+			case 'deploy_ready': return 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300';
 			case 'resolved': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
 			case 'wont_fix': return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
 			default: return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
@@ -166,9 +168,29 @@
 			case 'open': return 'Open';
 			case 'investigating': return 'Investigating';
 			case 'needs_feedback': return 'Needs Feedback';
+			case 'dev_review': return 'Dev Review';
+			case 'deploy_ready': return 'Deploy Ready';
 			case 'resolved': return 'Resolved';
 			case 'wont_fix': return "Won't Fix";
 			default: return status;
+		}
+	}
+
+	function reviewColor(status: string | null): string {
+		switch (status) {
+			case 'waiting_for_review': return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300';
+			case 'confirmed': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
+			case 'rejected': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+			default: return '';
+		}
+	}
+
+	function reviewLabel(status: string | null): string {
+		switch (status) {
+			case 'waiting_for_review': return 'Awaiting Review';
+			case 'confirmed': return 'Confirmed';
+			case 'rejected': return 'Rejected';
+			default: return '';
 		}
 	}
 
@@ -342,8 +364,8 @@
 			{@const s = data.summary}
 			{@const maxCatCount = Math.max(...Object.values(data.by_category), 1)}
 
-			<!-- Stat Cards — each links to filtered list view -->
-			<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+			<!-- Stat Cards — top row: pipeline, bottom row: metrics -->
+			<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
 				<button onclick={() => goToList({ status: 'open' })} class="bg-surface-elevated rounded-lg border border-theme border-l-2 border-l-blue-500 p-3 text-left hover:bg-surface-secondary transition-colors cursor-pointer">
 					<div class="text-xs font-medium text-text-theme-secondary mb-1">Open</div>
 					<div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{s.open}</div>
@@ -363,17 +385,25 @@
 						<div class="text-xs text-text-theme-tertiary mt-1">{s.duplicate} duplicates</div>
 					{/if}
 				</button>
+				<button onclick={() => goToList({ status: 'deploy_ready' })} class="bg-surface-elevated rounded-lg border border-theme border-l-2 border-l-violet-500 p-3 text-left hover:bg-surface-secondary transition-colors cursor-pointer">
+					<div class="text-xs font-medium text-text-theme-secondary mb-1">Deploy Ready</div>
+					<div class="text-2xl font-bold text-violet-600 dark:text-violet-400">{s.deploy_ready}</div>
+					{#if s.dev_review > 0}
+						<div class="text-xs text-cyan-600 dark:text-cyan-400 mt-1">{s.dev_review} in dev review</div>
+					{/if}
+				</button>
+				<div class="bg-surface-elevated rounded-lg border border-theme border-l-2 border-l-yellow-500 p-3">
+					<div class="text-xs font-medium text-text-theme-secondary mb-1">Awaiting Review</div>
+					<div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{s.awaiting_review}</div>
+					{#if s.review_confirmed > 0}
+						<div class="text-xs text-green-600 dark:text-green-400 mt-1">{s.review_confirmed} confirmed</div>
+					{/if}
+				</div>
 				<div class="bg-surface-elevated rounded-lg border border-theme p-3">
 					<div class="text-xs font-medium text-text-theme-secondary mb-1">Resolution Rate</div>
 					<div class="text-2xl font-bold text-text-theme-primary">{s.resolution_rate}%</div>
 					<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2">
 						<div class="bg-green-500 h-1.5 rounded-full transition-all" style="width: {s.resolution_rate}%"></div>
-					</div>
-				</div>
-				<div class="bg-surface-elevated rounded-lg border border-theme p-3">
-					<div class="text-xs font-medium text-text-theme-secondary mb-1">Avg Resolution</div>
-					<div class="text-2xl font-bold text-text-theme-primary">
-						{s.avg_resolution_days != null ? `${s.avg_resolution_days}d` : '--'}
 					</div>
 					<div class="text-xs text-text-theme-tertiary mt-1">days to close</div>
 				</div>
@@ -463,6 +493,8 @@
 				<option value="open">Open</option>
 				<option value="investigating">Investigating</option>
 				<option value="needs_feedback">Needs Feedback</option>
+				<option value="dev_review">Dev Review</option>
+				<option value="deploy_ready">Deploy Ready</option>
 				<option value="resolved">Resolved</option>
 				<option value="wont_fix">Won't Fix</option>
 			</select>
@@ -592,7 +624,16 @@
 										{#if issue.fixed_in_version}
 											<span>Fixed in {issue.fixed_in_version}</span>
 										{/if}
+										{#if issue.reporter_review_status}
+											<span class="px-1.5 py-0.5 rounded {reviewColor(issue.reporter_review_status)}">{reviewLabel(issue.reporter_review_status)}</span>
+										{/if}
 									</div>
+									{#if issue.review_steps}
+										<div class="text-xs bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-md p-2 mt-1">
+											<span class="font-medium text-violet-700 dark:text-violet-300">Review steps:</span>
+											<span class="text-text-theme-secondary whitespace-pre-wrap ml-1">{issue.review_steps}</span>
+										</div>
+									{/if}
 									{#if issue.notes && issue.notes.length > 0}
 										<div class="space-y-1.5 mt-2">
 											<div class="text-xs font-medium text-text-theme-secondary">Notes ({issue.notes.length})</div>
