@@ -261,6 +261,28 @@
 		return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 	}
 
+	/** Turn docID patterns (4-7 digit numbers, UUIDs) in text into clickable links */
+	function linkifyDocIds(text: string): string {
+		// Escape HTML first
+		const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		// Link UUIDs
+		let result = escaped.replace(
+			/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/gi,
+			'<a href="/details.html?id=$1" target="_blank" class="text-interactive hover:underline">$1</a>'
+		);
+		// Link integer docIDs (4-7 digits, preceded by word boundary or "docID " or "docid ")
+		result = result.replace(
+			/(?:docID\s*|docid\s*|#)(\d{4,7})\b/gi,
+			(match, id) => match.replace(id, `<a href="/details.html?id=${id}" target="_blank" class="text-interactive hover:underline">${id}</a>`)
+		);
+		// Catch standalone 5-7 digit numbers not already linked (likely docIDs in context)
+		result = result.replace(
+			/(?<!href="[^"]*?)(?<!>)\b(\d{5,7})\b(?![^<]*<\/a>)/g,
+			'<a href="/details.html?id=$1" target="_blank" class="text-interactive hover:underline">$1</a>'
+		);
+		return result;
+	}
+
 	// Navigate to list view with a specific filter applied
 	function goToList(filters: { status?: string; category?: string; reporter?: string }) {
 		filterStatus = filters.status || '';
@@ -606,7 +628,7 @@
 							{#if isExpanded}
 								<div class="px-3 pb-3 pt-2 ml-7 space-y-2">
 									{#if issue.description}
-										<p class="text-sm text-text-theme-secondary whitespace-pre-wrap leading-relaxed max-w-prose">{issue.description}</p>
+										<p class="text-sm text-text-theme-secondary whitespace-pre-wrap leading-relaxed max-w-prose">{@html linkifyDocIds(issue.description)}</p>
 									{/if}
 									<div class="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-text-theme-tertiary items-center">
 										<span class="inline-flex items-center gap-1">
@@ -639,7 +661,7 @@
 									{#if issue.review_steps}
 										<div class="text-xs bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-md p-2 mt-1">
 											<span class="font-medium text-violet-700 dark:text-violet-300">Review steps:</span>
-											<span class="text-text-theme-secondary whitespace-pre-wrap ml-1">{issue.review_steps}</span>
+											<span class="text-text-theme-secondary whitespace-pre-wrap ml-1">{@html linkifyDocIds(issue.review_steps)}</span>
 										</div>
 									{/if}
 									{#if issue.notes && issue.notes.length > 0}
@@ -651,7 +673,7 @@
 														<span class="font-medium text-text-theme-primary">{note.author}</span>
 														<span class="text-text-theme-tertiary">{formatTimestamp(note.timestamp)}</span>
 													</div>
-													<p class="text-text-theme-secondary whitespace-pre-wrap leading-relaxed">{note.text}</p>
+													<p class="text-text-theme-secondary whitespace-pre-wrap leading-relaxed">{@html linkifyDocIds(note.text)}</p>
 												</div>
 											{/each}
 										</div>
