@@ -608,7 +608,15 @@
 									{#if issue.description}
 										<p class="text-sm text-text-theme-secondary whitespace-pre-wrap leading-relaxed max-w-prose">{issue.description}</p>
 									{/if}
-									<div class="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-text-theme-tertiary">
+									<div class="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-text-theme-tertiary items-center">
+										<span class="inline-flex items-center gap-1">
+											<code class="bg-surface-secondary px-1.5 py-0.5 rounded text-text-theme-secondary font-mono">{issue.full_id.slice(0, 8)}</code>
+											<button
+												class="text-text-theme-tertiary hover:text-text-theme-primary transition-colors"
+												title="Copy full issue ID"
+												onclick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(issue.full_id); const btn = e.currentTarget; btn.textContent = '✓'; setTimeout(() => btn.textContent = '⎘', 1200); }}
+											>⎘</button>
+										</span>
 										<span>Filed {formatDate(issue.created_at)}</span>
 										{#if issue.search_query}
 											<span>Query: <code class="bg-surface-secondary px-1.5 py-0.5 rounded text-text-theme-secondary">{issue.search_query}</code></span>
