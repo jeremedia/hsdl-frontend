@@ -110,7 +110,7 @@
 								{/if}
 								<div class="flex items-center gap-3 mt-2 text-xs text-text-theme-secondary">
 									<span class="flex items-center gap-1"><ClipboardList size={12} /> {set.query_count} queries</span>
-									{#if run}
+									{#if run?.rating_progress}
 										<span class="flex items-center gap-1">
 											{#if run.rating_progress.complete}
 												<CheckCircle2 size={12} class="text-success" />
