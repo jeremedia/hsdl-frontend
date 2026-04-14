@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { inkApi } from '$lib/services/ink-api';
-	import { LayoutDashboard, FileText, Search, ScrollText, Info, Menu, X, Keyboard, Sun, Moon, Monitor, Zap, BarChart3, SlidersHorizontal, MessageSquare } from 'lucide-svelte';
+	import { LayoutDashboard, FileText, Search, Info, Menu, X, Keyboard, Sun, Moon, Monitor, Zap, BarChart3, SlidersHorizontal, MessageSquare } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { initTheme, destroyTheme, setColorMode, getThemeState, type ColorMode } from '$lib/stores/theme.svelte';
 	import '../app.css';
@@ -21,6 +21,7 @@
 
 	onMount(() => {
 		initTheme();
+		inkApi.getReleaseNotes().then((notes) => { if (notes?.[0]) appVersion = notes[0].version; }).catch(() => {});
 		return () => destroyTheme();
 	});
 
@@ -64,6 +65,8 @@
 			});
 	});
 
+	let appVersion = $state<string | null>(null);
+
 	let currentPath = $derived($page.url.pathname);
 	let isEditorPage = $derived(currentPath.match(/\/documents\/[^/]+$/) !== null);
 
@@ -71,7 +74,6 @@
 		{ href: `${base}/`, label: 'Dashboard', icon: LayoutDashboard },
 		{ href: `${base}/documents`, label: 'Documents', icon: FileText },
 		{ href: `${base}/search`, label: 'Search', icon: Search },
-		{ href: `${base}/releases`, label: 'Releases', icon: ScrollText },
 		{ href: `${base}/enrichment`, label: 'Enrichment', icon: Zap },
 		{ href: `${base}/eval`, label: 'Eval', icon: BarChart3 },
 		{ href: `${base}/lab`, label: 'Lab', icon: SlidersHorizontal },
@@ -152,8 +154,17 @@
 					{/each}
 				</nav>
 
-				<!-- Right side: user + shortcuts hint -->
+				<!-- Right side: version, controls, user -->
 				<div class="hidden md:flex items-center gap-3 ml-auto">
+					{#if appVersion}
+						<a
+							href="{base}/releases"
+							class="text-xs tabular-nums transition-colors
+								{isActive(`${base}/releases`)
+								? 'text-text-theme-primary font-medium'
+								: 'text-text-theme-tertiary hover:text-text-theme-secondary'}"
+						>v{appVersion}</a>
+					{/if}
 					<button
 						onclick={cycleColorMode}
 						class="text-text-theme-tertiary hover:text-text-theme-secondary transition-colors"
@@ -203,6 +214,16 @@
 							{item.label}
 						</a>
 					{/each}
+					{#if appVersion}
+						<a
+							href="{base}/releases"
+							onclick={() => (mobileMenuOpen = false)}
+							class="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors
+								{isActive(`${base}/releases`)
+								? 'bg-primary-100 text-primary-700'
+								: 'text-text-theme-secondary hover:bg-surface-secondary hover:text-text-theme-primary'}"
+						>v{appVersion}</a>
+					{/if}
 					<div class="px-3 py-2 border-t border-theme mt-1 pt-2">
 						<p class="text-xs text-text-theme-secondary">{user.name || user.email}</p>
 					</div>
