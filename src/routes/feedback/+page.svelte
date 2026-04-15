@@ -2,7 +2,8 @@
 	import { createQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { writable, derived } from 'svelte/store';
 	import { inkApi, type FeedbackDashboardData, type FeedbackIssueExpanded, type FeedbackIssueListParams } from '$lib/services/ink-api';
-	import { MessageSquare, AlertTriangle, Bug, Lightbulb, Layout, FileText, Search, Gauge, CircleDot, BarChart3, List, ChevronDown, ChevronRight, ExternalLink } from 'lucide-svelte';
+	import { MessageSquare, AlertTriangle, Bug, Lightbulb, Layout, FileText, Search, Gauge, CircleDot, BarChart3, List, ChevronDown, ChevronRight, ExternalLink, Image } from 'lucide-svelte';
+	import ImageGallery from '$lib/components/ImageGallery.svelte';
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
 
@@ -631,6 +632,13 @@
 									{#if issue.description}
 										<p class="text-sm text-text-theme-secondary whitespace-pre-wrap leading-relaxed max-w-prose">{@html linkifyDocIds(issue.description)}</p>
 									{/if}
+									{#if issue.images?.length}
+										<div class="flex items-center gap-1.5 text-xs text-text-theme-secondary">
+											<Image size={12} />
+											<span>Screenshots ({issue.images.length})</span>
+										</div>
+										<ImageGallery images={issue.images} galleryId="issue-{issue.full_id}" />
+									{/if}
 									<div class="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-text-theme-tertiary items-center">
 										<span class="inline-flex items-center gap-1">
 											<code class="bg-surface-secondary px-1.5 py-0.5 rounded text-text-theme-secondary font-mono">{issue.full_id.slice(0, 8)}</code>
@@ -675,6 +683,9 @@
 														<span class="text-text-theme-tertiary">{formatTimestamp(note.timestamp)}</span>
 													</div>
 													<p class="text-text-theme-secondary whitespace-pre-wrap leading-relaxed">{@html linkifyDocIds(note.text)}</p>
+													{#if note.images?.length}
+														<ImageGallery images={note.images} thumbnailSize={48} galleryId="note-{note.timestamp}" />
+													{/if}
 												</div>
 											{/each}
 										</div>

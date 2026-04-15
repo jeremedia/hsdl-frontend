@@ -33,6 +33,7 @@
 	"dependencies": {
 		"@tanstack/svelte-query": "^5.62.0",
 		"lucide-svelte": "^0.468.0",
+		"photoswipe": "^5.4.4",
 		"workbox-window": "^7.3.0"
 	},
 	"overrides": {
