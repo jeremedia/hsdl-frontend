@@ -2,6 +2,7 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { createQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
+	import { derived } from 'svelte/store';
 	import { inkApi } from '$lib/services/ink-api';
 	import type { GoldenQueryRunResult, RatingEntry, SearchResult } from '$lib/services/ink-api';
 	import {
@@ -12,10 +13,15 @@
 	let runId = $derived($page.params.id ?? '');
 	const queryClient = useQueryClient();
 
-	const runQuery = createQuery({
-		queryKey: ['ink', 'golden_run', runId],
-		queryFn: () => inkApi.getGoldenRun(runId)
-	});
+	const runQuery = createQuery(
+		derived(page, ($p) => {
+			const id = $p.params.id ?? '';
+			return {
+				queryKey: ['ink', 'golden_run', id],
+				queryFn: () => inkApi.getGoldenRun(id)
+			};
+		})
+	);
 
 	// Rating mutation -- fires on every individual rating action
 	const rateMutation = createMutation({

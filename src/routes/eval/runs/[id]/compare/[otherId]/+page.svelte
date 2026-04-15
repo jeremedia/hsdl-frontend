@@ -2,16 +2,20 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { createQuery } from '@tanstack/svelte-query';
+	import { derived } from 'svelte/store';
 	import { inkApi } from '$lib/services/ink-api';
 	import { ArrowLeft, TrendingUp, TrendingDown, Minus } from 'lucide-svelte';
 
-	let runIdA = $derived($page.params.id ?? '');
-	let runIdB = $derived($page.params.otherId ?? '');
-
-	const compareQuery = createQuery({
-		queryKey: ['ink', 'golden_compare', runIdA, runIdB],
-		queryFn: () => inkApi.compareGoldenRuns(runIdA, runIdB)
-	});
+	const compareQuery = createQuery(
+		derived(page, ($p) => {
+			const idA = $p.params.id ?? '';
+			const idB = $p.params.otherId ?? '';
+			return {
+				queryKey: ['ink', 'golden_compare', idA, idB],
+				queryFn: () => inkApi.compareGoldenRuns(idA, idB)
+			};
+		})
+	);
 
 	function formatMetric(val: unknown): string {
 		if (typeof val === 'number') return (val * 100).toFixed(1) + '%';

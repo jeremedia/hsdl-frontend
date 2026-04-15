@@ -1,9 +1,14 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
+	import { writable, derived } from 'svelte/store';
 	import { inkApi, type ReleaseNote } from '$lib/services/ink-api';
 	import { ScrollText, Tag, ChevronDown, ChevronRight } from 'lucide-svelte';
 
 	let filterTag = $state('');
+
+	// Bridge $state → store for TanStack Query reactivity
+	const filterTagStore = writable('');
+	$effect(() => { filterTagStore.set(filterTag); });
 
 	// Always-unfiltered query just for tag list
 	const allReleasesQuery = createQuery({
@@ -11,10 +16,12 @@
 		queryFn: () => inkApi.getReleaseNotes()
 	});
 
-	const releasesQuery = createQuery({
-		queryKey: ['ink', 'releases', filterTag],
-		queryFn: () => inkApi.getReleaseNotes(filterTag || undefined)
-	});
+	const releasesQuery = createQuery(
+		derived(filterTagStore, ($tag) => ({
+			queryKey: ['ink', 'releases', $tag],
+			queryFn: () => inkApi.getReleaseNotes($tag || undefined)
+		}))
+	);
 
 	// Track which releases are expanded (first one defaults open)
 	let expandedVersions = $state<Set<string>>(new Set());

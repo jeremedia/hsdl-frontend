@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { createQuery } from '@tanstack/svelte-query';
+	import { writable, derived } from 'svelte/store';
 	import { inkApi, type EnrichmentStatus } from '$lib/services/ink-api';
 	import {
 		Zap, Database, FileText, Brain, Tag, BookOpen, Network, Heart,
@@ -9,11 +10,17 @@
 
 	let autoRefresh = $state(true);
 
-	const statusQuery = createQuery({
-		queryKey: ['ink', 'enrichment'],
-		queryFn: () => inkApi.getEnrichmentStatus(),
-		refetchInterval: autoRefresh ? 10000 : false
-	});
+	// Bridge $state → store for TanStack Query reactivity
+	const autoRefreshStore = writable(true);
+	$effect(() => { autoRefreshStore.set(autoRefresh); });
+
+	const statusQuery = createQuery(
+		derived(autoRefreshStore, ($auto) => ({
+			queryKey: ['ink', 'enrichment'],
+			queryFn: () => inkApi.getEnrichmentStatus(),
+			refetchInterval: $auto ? 10000 : false as const
+		}))
+	);
 
 	const dimensionMeta: Record<string, { label: string; icon: typeof Zap; color: string }> = {
 		embedding: { label: 'Embeddings', icon: Brain, color: 'bg-blue-500' },
@@ -112,10 +119,11 @@
 			<div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
 				{#each Object.entries(data.coverage) as [key, cov]}
 					{@const meta = dimensionMeta[key] || { label: key, icon: Zap, color: 'bg-gray-500' }}
+					{@const MetaIcon = meta.icon}
 					<div class="card p-3">
 						<div class="flex items-center gap-2 mb-2">
 							<div class="w-6 h-6 rounded {meta.color} bg-opacity-15 flex items-center justify-center">
-								<svelte:component this={meta.icon} size={13} class="{meta.color.replace('bg-', 'text-')}" />
+								<MetaIcon size={13} class={meta.color.replace('bg-', 'text-')} />
 							</div>
 							<span class="text-xs font-medium text-text-theme-primary">{meta.label}</span>
 							{#if cov.note}

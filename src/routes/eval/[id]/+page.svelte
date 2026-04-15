@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { createQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
+	import { derived } from 'svelte/store';
 	import { inkApi } from '$lib/services/ink-api';
 	import type { GoldenQuery } from '$lib/services/ink-api';
 	import { ArrowLeft, Plus, Play, Trash2, Upload, Download, BarChart3, CheckCircle2 } from 'lucide-svelte';
@@ -10,10 +11,15 @@
 	let setId = $derived($page.params.id ?? '');
 	const queryClient = useQueryClient();
 
-	const setQuery = createQuery({
-		queryKey: ['ink', 'golden_set', setId],
-		queryFn: () => inkApi.getGoldenSet(setId)
-	});
+	const setQuery = createQuery(
+		derived(page, ($p) => {
+			const id = $p.params.id ?? '';
+			return {
+				queryKey: ['ink', 'golden_set', id],
+				queryFn: () => inkApi.getGoldenSet(id)
+			};
+		})
+	);
 
 	// Add query form
 	let showAddQuery = $state(false);

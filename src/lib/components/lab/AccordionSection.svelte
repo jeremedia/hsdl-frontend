@@ -14,6 +14,7 @@
 		children: Snippet;
 	} = $props();
 
+	// svelte-ignore state_referenced_locally
 	let isOpen = $state(open);
 </script>
 

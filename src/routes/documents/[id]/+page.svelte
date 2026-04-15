@@ -3,18 +3,22 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { createQuery } from '@tanstack/svelte-query';
+	import { derived } from 'svelte/store';
 	import { inkApi } from '$lib/services/ink-api';
 	import { inkPrefs } from '$lib/stores/ink-preferences.svelte';
 	import MetadataForm from '$lib/components/ink/MetadataForm.svelte';
 	import HealthBar from '$lib/components/ink/HealthBar.svelte';
 	import { ArrowLeft, ExternalLink, FileText, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-svelte';
 
-	let docId = $derived($page.params.id ?? '');
-
-	const documentQuery = createQuery({
-		queryKey: ['ink', 'document', docId],
-		queryFn: () => inkApi.getDocument(docId)
-	});
+	const documentQuery = createQuery(
+		derived(page, ($p) => {
+			const id = $p.params.id ?? '';
+			return {
+				queryKey: ['ink', 'document', id],
+				queryFn: () => inkApi.getDocument(id)
+			};
+		})
+	);
 
 	let showPreview = $state(inkPrefs.get<boolean>('editor.showPdf', true));
 	let previewWidth = $state(50); // percentage of the right panel

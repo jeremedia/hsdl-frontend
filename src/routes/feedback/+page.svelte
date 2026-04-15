@@ -50,14 +50,15 @@
 	let filterCategory = $state(urlParams.get('category') || '');
 	let filterPriority = $state(urlParams.get('priority') || '');
 	let filterReporter = $state(urlParams.get('reporter') || '');
-	let filterText = $state(urlParams.get('q') || '');
+	const initialFilterText = urlParams.get('q') || '';
+	let filterText = $state(initialFilterText);
 	let expandedIds = $state<Set<string>>(new Set(
 		(stored.expanded ? JSON.parse(stored.expanded) : []) as string[]
 	));
 
 	// ── Sync state → URL + localStorage ──
 	// debouncedText is updated by the textStore debounce timer, not on every keystroke
-	let debouncedText = $state(filterText);
+	let debouncedText = $state(initialFilterText);
 
 	function syncUrl(qVal: string) {
 		const params = new URLSearchParams();

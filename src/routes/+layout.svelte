@@ -171,7 +171,10 @@
 						aria-label="Toggle color mode ({themeState.colorMode})"
 						title="Color mode: {themeState.colorMode}"
 					>
-						<svelte:component this={modeIcons[themeState.colorMode]} size={14} />
+						{#if modeIcons[themeState.colorMode]}
+							{@const ModeIcon = modeIcons[themeState.colorMode]}
+							<ModeIcon size={14} />
+						{/if}
 					</button>
 					<button
 						onclick={() => (showShortcuts = !showShortcuts)}
