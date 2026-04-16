@@ -193,6 +193,8 @@ export interface FeedbackTimelineDay {
 	resolved: number;
 }
 
+export type FeedbackVerdict = 'ready' | 'not_ready' | 'human_review';
+
 export interface FeedbackIssue {
 	id: string;
 	full_id: string;
@@ -201,6 +203,7 @@ export interface FeedbackIssue {
 	priority: string;
 	status: string;
 	reporter_review_status: string | null;
+	latest_verdict: FeedbackVerdict | null;
 	reported_by: string | null;
 	notes_count: number;
 	created_at: string;
@@ -216,7 +219,7 @@ export interface FeedbackIssueExpanded extends FeedbackIssue {
 	resolved_at: string | null;
 	fixed_in_version: string | null;
 	review_steps: string | null;
-	notes: Array<{ text: string; author: string; timestamp: string }>;
+	notes: Array<{ text: string; author: string; timestamp: string; verdict?: FeedbackVerdict }>;
 }
 
 export interface FeedbackIssueFilters {

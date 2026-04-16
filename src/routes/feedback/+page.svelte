@@ -6,6 +6,7 @@
 	import ImageGallery from '$lib/components/ImageGallery.svelte';
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
+	import { renderMarkdown } from '$lib/utils/markdown';
 
 	const queryClient = useQueryClient();
 
@@ -240,6 +241,50 @@
 		}
 	}
 
+	type VerdictKey = 'ready' | 'not_ready' | 'human_review' | 'unreviewed';
+	interface VerdictStyle {
+		glyph: string;
+		short: string;        // 1-word badge label
+		full: string;         // tooltip / summary label
+		cls: string;          // pill background/text
+		rail: string;         // 4px left rail color on the row
+		dot: string;          // 8px dot for summary strip
+	}
+
+	function verdictStyle(v: string | null): VerdictStyle {
+		switch (v) {
+			case 'ready':
+				return {
+					glyph: '✓', short: 'Ready', full: 'Claude: ready',
+					cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+					rail: 'bg-green-500', dot: 'bg-green-500'
+				};
+			case 'not_ready':
+				return {
+					glyph: '✗', short: 'Flag', full: 'Claude: not ready',
+					cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+					rail: 'bg-red-500', dot: 'bg-red-500'
+				};
+			case 'human_review':
+				return {
+					glyph: '👁', short: 'Human', full: 'Claude: human review requested',
+					cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+					rail: 'bg-amber-500', dot: 'bg-amber-500'
+				};
+			default:
+				return {
+					glyph: '○', short: 'New', full: 'Unreviewed — awaiting Claude verdict',
+					cls: 'bg-surface-secondary text-text-theme-tertiary border border-dashed border-theme',
+					rail: 'bg-surface-secondary', dot: 'bg-text-theme-tertiary/40'
+				};
+		}
+	}
+
+	function verdictKey(v: string | null): VerdictKey {
+		if (v === 'ready' || v === 'not_ready' || v === 'human_review') return v;
+		return 'unreviewed';
+	}
+
 	function sparklinePoints(data: FeedbackDashboardData, key: 'opened' | 'resolved'): string {
 		const timeline = data.timeline;
 		if (!timeline.length) return '';
@@ -261,28 +306,6 @@
 
 	function formatTimestamp(iso: string): string {
 		return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-	}
-
-	/** Turn docID patterns (4-7 digit numbers, UUIDs) in text into clickable links */
-	function linkifyDocIds(text: string): string {
-		// Escape HTML first
-		const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-		// Link UUIDs
-		let result = escaped.replace(
-			/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/gi,
-			'<a href="/details.html?id=$1" target="_blank" class="text-interactive hover:underline">$1</a>'
-		);
-		// Link integer docIDs (4-7 digits, preceded by word boundary or "docID " or "docid ")
-		result = result.replace(
-			/(?:docID\s*|docid\s*|#)(\d{4,7})\b/gi,
-			(match, id) => match.replace(id, `<a href="/details.html?id=${id}" target="_blank" class="text-interactive hover:underline">${id}</a>`)
-		);
-		// Catch standalone 5-7 digit numbers not already linked (likely docIDs in context)
-		result = result.replace(
-			/(?<!href="[^"]*?)(?<!>)\b(\d{5,7})\b(?![^<]*<\/a>)/g,
-			'<a href="/details.html?id=$1" target="_blank" class="text-interactive hover:underline">$1</a>'
-		);
-		return result;
 	}
 
 	// Navigate to list view with a specific filter applied
@@ -318,6 +341,7 @@
 		filterPriority = '';
 		filterReporter = '';
 		filterText = '';
+		filterVerdict = '';
 		listPage = 1;
 	}
 
@@ -326,8 +350,32 @@
 		return listDir === 'asc' ? ' \u25B2' : ' \u25BC';
 	}
 
+	// Client-side verdict filter — only meaningful when viewing dev_review queue
+	let filterVerdict = $state<VerdictKey | ''>('');
+
 	let hasActiveFilters = $derived(
-		filterStatus !== '' || filterCategory !== '' || filterPriority !== '' || filterReporter !== '' || filterText !== ''
+		filterStatus !== '' || filterCategory !== '' || filterPriority !== '' || filterReporter !== '' || filterText !== '' || filterVerdict !== ''
+	);
+
+	// Verdict counts across the current (server-filtered) result page
+	let verdictCounts = $derived.by(() => {
+		const counts: Record<VerdictKey, number> = { ready: 0, not_ready: 0, human_review: 0, unreviewed: 0 };
+		const data = $listQuery.data;
+		if (data) for (const r of data.results) counts[verdictKey(r.latest_verdict)]++;
+		return counts;
+	});
+
+	// Results after optional client-side verdict filter
+	let visibleResults = $derived.by(() => {
+		const data = $listQuery.data;
+		if (!data) return [] as FeedbackIssueExpanded[];
+		if (!filterVerdict) return data.results;
+		return data.results.filter(r => verdictKey(r.latest_verdict) === filterVerdict);
+	});
+
+	// Show the verdict summary strip only when the review workflow is salient
+	let showVerdictSummary = $derived(
+		filterStatus === 'dev_review' || filterStatus === 'deploy_ready' || filterStatus === ''
 	);
 
 	// Auto-expand single result (e.g., when linked by ID)
@@ -567,11 +615,58 @@
 			</div>
 		{:else if $listQuery.data}
 			{@const ld = $listQuery.data}
+			{@const vc = verdictCounts}
+			{@const totalReviewable = vc.ready + vc.not_ready + vc.human_review + vc.unreviewed}
+
+			<!-- ── Queue verdict summary strip ──
+			     Shows at-a-glance review state across the current result page so a reviewer
+			     can orient in < 3 seconds: "how many did Claude already approve?" -->
+			{#if showVerdictSummary && totalReviewable > 0}
+				<div class="flex flex-wrap items-center gap-1.5 text-xs">
+					<span class="text-text-theme-tertiary mr-1">Review queue:</span>
+					{#each [
+						{ k: 'ready' as VerdictKey,        count: vc.ready },
+						{ k: 'not_ready' as VerdictKey,    count: vc.not_ready },
+						{ k: 'human_review' as VerdictKey, count: vc.human_review },
+						{ k: 'unreviewed' as VerdictKey,   count: vc.unreviewed }
+					] as pill}
+						{@const vs = verdictStyle(pill.k === 'unreviewed' ? null : pill.k)}
+						{@const isActive = filterVerdict === pill.k}
+						{@const isDim = pill.count === 0}
+						<button
+							type="button"
+							onclick={() => { filterVerdict = isActive ? '' : pill.k; }}
+							disabled={isDim}
+							class="inline-flex items-center gap-1.5 rounded-full pl-1.5 pr-2.5 py-0.5 border transition-all
+								{isActive
+									? 'border-interactive ring-1 ring-interactive/40 bg-surface-elevated'
+									: 'border-theme bg-surface-elevated hover:bg-surface-secondary'}
+								{isDim ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}"
+							title={vs.full}
+						>
+							<span class="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-semibold {vs.cls}">{vs.glyph}</span>
+							<span class="tabular-nums font-semibold text-text-theme-primary">{pill.count}</span>
+							<span class="text-text-theme-secondary">{vs.short}</span>
+						</button>
+					{/each}
+					{#if filterVerdict}
+						<button
+							type="button"
+							onclick={() => { filterVerdict = ''; }}
+							class="text-[11px] text-interactive hover:underline ml-1"
+						>Show all</button>
+					{/if}
+				</div>
+			{/if}
 
 			<!-- Table -->
 			<div class="bg-surface-elevated rounded-lg border border-theme overflow-hidden overflow-x-auto">
-				<!-- Header row -->
-				<div class="grid grid-cols-[1fr_90px_110px_80px_130px_44px] gap-2 px-3 py-2 border-b border-theme bg-surface-secondary text-xs font-medium text-text-theme-secondary uppercase tracking-wider min-w-[800px]">
+				<!-- Header row —
+				     Grid: [rail 4px][verdict 86px][short-id 72px][title 1fr][status 90px][category 110px][priority 80px][reporter 130px][age 44px] -->
+				<div class="grid grid-cols-[4px_86px_72px_1fr_90px_110px_80px_130px_44px] gap-2 px-3 py-2 border-b border-theme bg-surface-secondary text-[11px] font-medium text-text-theme-secondary uppercase tracking-wider min-w-[900px]">
+					<span aria-hidden="true"></span>
+					<span class="pl-4">Review</span>
+					<span>ID</span>
 					<button class="text-left hover:text-text-theme-primary transition-colors" onclick={() => toggleSort('title')}>Title{sortIndicator('title')}</button>
 					<button class="text-left hover:text-text-theme-primary transition-colors" onclick={() => toggleSort('status')}>Status{sortIndicator('status')}</button>
 					<button class="text-left hover:text-text-theme-primary transition-colors" onclick={() => toggleSort('category')}>Category{sortIndicator('category')}</button>
@@ -580,22 +675,56 @@
 					<button class="text-left hover:text-text-theme-primary transition-colors" onclick={() => toggleSort('created_at')}>Age{sortIndicator('created_at')}</button>
 				</div>
 
+				<!-- Empty state when verdict filter removes everything -->
+				{#if visibleResults.length === 0}
+					<div class="px-3 py-8 text-center text-xs text-text-theme-tertiary">
+						{#if filterVerdict}
+							No issues with verdict <span class="font-medium text-text-theme-secondary">{verdictStyle(filterVerdict === 'unreviewed' ? null : filterVerdict).short}</span>.
+							<button onclick={() => { filterVerdict = ''; }} class="text-interactive hover:underline ml-1">Show all</button>
+						{:else}
+							No issues match the current filters.
+						{/if}
+					</div>
+				{/if}
+
 				<!-- Issue rows -->
 				<div class="divide-y divide-gray-200 dark:divide-gray-700/50">
-					{#each ld.results as issue (issue.full_id)}
+					{#each visibleResults as issue (issue.full_id)}
 						{@const isExpanded = expandedIds.has(issue.full_id)}
-						<!-- Summary row -->
+						{@const vs = verdictStyle(issue.latest_verdict)}
+						<!-- Summary row —
+						     Grid columns match header: [rail 4px][verdict 86px][short-id 72px][title 1fr][status 90px][category 110px][priority 80px][reporter 130px][age 44px].
+						     The 4px left rail carries verdict color into the row so a scanning reviewer sees
+						     green/red/amber stripes without reading the badge. -->
 						<div class={isExpanded ? 'bg-surface-secondary/50' : ''}>
 							<button
-								class="w-full grid grid-cols-[1fr_90px_110px_80px_130px_44px] gap-2 px-3 py-2 text-left hover:bg-surface-secondary transition-colors items-center group min-w-[800px]"
+								class="w-full grid grid-cols-[4px_86px_72px_1fr_90px_110px_80px_130px_44px] gap-2 pr-3 py-2 text-left hover:bg-surface-secondary transition-colors items-center group min-w-[900px]"
 								onclick={() => toggleExpanded(issue.full_id)}
 							>
-								<div class="flex items-center gap-1.5 min-w-0">
+								<!-- Verdict rail (full-height 4px stripe colored by verdict; neutral when unreviewed) -->
+								<span class="self-stretch {vs.rail}" aria-hidden="true"></span>
+
+								<!-- Verdict badge column (glyph + short label, always present so "New" = unreviewed is legible) -->
+								<span class="flex items-center gap-1 min-w-0 pl-1">
 									{#if isExpanded}
-										<ChevronDown size={14} class="text-text-theme-secondary flex-shrink-0" />
+										<ChevronDown size={13} class="text-text-theme-secondary flex-shrink-0" />
 									{:else}
-										<ChevronRight size={14} class="text-text-theme-tertiary group-hover:text-text-theme-secondary flex-shrink-0 transition-colors" />
+										<ChevronRight size={13} class="text-text-theme-tertiary group-hover:text-text-theme-secondary flex-shrink-0 transition-colors" />
 									{/if}
+									<span
+										class="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded {vs.cls}"
+										title={vs.full}
+									>
+										<span aria-hidden="true">{vs.glyph}</span>
+										<span>{vs.short}</span>
+									</span>
+								</span>
+
+								<!-- Short-ID column (mono, promoted to its own slot so it stops competing with the title) -->
+								<code class="text-[10px] font-mono text-text-theme-tertiary bg-surface-secondary rounded px-1.5 py-0.5 tabular-nums w-fit">{issue.id}</code>
+
+								<!-- Title + priority flag -->
+								<div class="flex items-center gap-1.5 min-w-0">
 									<span class="text-sm text-text-theme-primary truncate">{issue.title}</span>
 									{#if issue.priority === 'high' || issue.priority === 'critical'}
 										<AlertTriangle size={12} class="{priorityIndicator(issue.priority)} flex-shrink-0" />
@@ -626,20 +755,76 @@
 								<span class="text-xs text-text-theme-tertiary tabular-nums">{issue.age_days}d</span>
 							</button>
 
-							<!-- Expanded detail -->
+							<!-- Expanded detail —
+							     Order optimized for a reviewer's actual workflow:
+							       1. Test URL (primary CTA — click first, land on the reproducer)
+							       2. Review steps (the pass/fail checklist — reviewer's actual job)
+							       3. Description (background context for the issue)
+							       4. Screenshots
+							       5. Metadata (copy-id, filed date, query, resolution) — reference, lowest priority
+							       6. Notes (discussion history) -->
 							{#if isExpanded}
-								<div class="px-3 pb-3 pt-2 ml-7 space-y-2">
-									{#if issue.description}
-										<p class="text-sm text-text-theme-secondary whitespace-pre-wrap leading-relaxed max-w-prose">{@html linkifyDocIds(issue.description)}</p>
+								<div class="pb-3 pt-1 pr-3 pl-[185px] space-y-3">
+									<!-- 1. Test URL CTA -->
+									{#if issue.url_example}
+										<a
+											href={issue.url_example}
+											target="_blank"
+											rel="noopener"
+											class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md border border-interactive/30 bg-interactive/5 hover:bg-interactive/10 text-interactive transition-colors max-w-full"
+											title={issue.url_example}
+										>
+											<ExternalLink size={11} class="flex-shrink-0" />
+											<span class="flex-shrink-0">Open Test URL</span>
+											<code class="text-[10px] font-mono text-interactive/80 truncate">{issue.url_example}</code>
+										</a>
 									{/if}
-									{#if issue.images?.length}
-										<div class="flex items-center gap-1.5 text-xs text-text-theme-secondary">
-											<Image size={12} />
-											<span>Screenshots ({issue.images.length})</span>
+
+									<!-- 2. Review steps (violet, prominent — the reviewer's checklist) -->
+									{#if issue.review_steps}
+										<div class="text-xs bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-md p-2.5">
+											<div class="font-semibold text-violet-700 dark:text-violet-300 mb-1 uppercase tracking-wider text-[10px]">Review steps</div>
+											<div class="markdown-block text-text-theme-secondary">{@html renderMarkdown(issue.review_steps)}</div>
 										</div>
-										<ImageGallery images={issue.images} galleryId="issue-{issue.full_id}" />
 									{/if}
-									<div class="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-text-theme-tertiary items-center">
+
+									<!-- 3. Description -->
+									{#if issue.description}
+										<div class="markdown-block text-sm text-text-theme-secondary leading-relaxed max-w-prose">{@html renderMarkdown(issue.description)}</div>
+									{/if}
+
+									<!-- 4. Screenshots -->
+									{#if issue.images?.length}
+										<div class="space-y-1.5">
+											<div class="flex items-center gap-1.5 text-xs text-text-theme-secondary">
+												<Image size={12} />
+												<span>Screenshots ({issue.images.length})</span>
+											</div>
+											<ImageGallery images={issue.images} galleryId="issue-{issue.full_id}" />
+										</div>
+									{/if}
+
+									<!-- 5. Notes (discussion history) -->
+									{#if issue.notes && issue.notes.length > 0}
+										<div class="space-y-1.5">
+											<div class="text-xs font-medium text-text-theme-secondary">Notes ({issue.notes.length})</div>
+											{#each issue.notes as note}
+												<div class="text-xs bg-surface-secondary rounded-md p-2.5">
+													<div class="flex items-center gap-2 mb-1">
+														<span class="font-medium text-text-theme-primary">{note.author}</span>
+														<span class="text-text-theme-tertiary">{formatTimestamp(note.timestamp)}</span>
+													</div>
+													<div class="markdown-block text-text-theme-secondary leading-relaxed">{@html renderMarkdown(note.text)}</div>
+													{#if note.images?.length}
+														<ImageGallery images={note.images} thumbnailSize={48} galleryId="note-{note.timestamp}" />
+													{/if}
+												</div>
+											{/each}
+										</div>
+									{/if}
+
+									<!-- 6. Metadata footer (copy-id, filed, query, resolution, reporter status) — reference row, lowest visual weight -->
+									<div class="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-text-theme-tertiary items-center pt-1 border-t border-theme/50">
 										<span class="inline-flex items-center gap-1">
 											<code class="bg-surface-secondary px-1.5 py-0.5 rounded text-text-theme-secondary font-mono">{issue.full_id.slice(0, 8)}</code>
 											<button
@@ -652,11 +837,6 @@
 										{#if issue.search_query}
 											<span>Query: <code class="bg-surface-secondary px-1.5 py-0.5 rounded text-text-theme-secondary">{issue.search_query}</code></span>
 										{/if}
-										{#if issue.url_example}
-											<a href={issue.url_example} target="_blank" rel="noopener" class="text-interactive hover:underline inline-flex items-center gap-1">
-												Example URL <ExternalLink size={10} />
-											</a>
-										{/if}
 										{#if issue.resolution}
 											<span class="text-green-600 dark:text-green-400">Resolution: {issue.resolution}</span>
 										{/if}
@@ -667,29 +847,6 @@
 											<span class="px-1.5 py-0.5 rounded {reviewColor(issue.reporter_review_status)}">{reviewLabel(issue.reporter_review_status)}</span>
 										{/if}
 									</div>
-									{#if issue.review_steps}
-										<div class="text-xs bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-md p-2 mt-1">
-											<span class="font-medium text-violet-700 dark:text-violet-300">Review steps:</span>
-											<span class="text-text-theme-secondary whitespace-pre-wrap ml-1">{@html linkifyDocIds(issue.review_steps)}</span>
-										</div>
-									{/if}
-									{#if issue.notes && issue.notes.length > 0}
-										<div class="space-y-1.5 mt-2">
-											<div class="text-xs font-medium text-text-theme-secondary">Notes ({issue.notes.length})</div>
-											{#each issue.notes as note}
-												<div class="text-xs bg-surface-secondary rounded-md p-2.5">
-													<div class="flex items-center gap-2 mb-1">
-														<span class="font-medium text-text-theme-primary">{note.author}</span>
-														<span class="text-text-theme-tertiary">{formatTimestamp(note.timestamp)}</span>
-													</div>
-													<p class="text-text-theme-secondary whitespace-pre-wrap leading-relaxed">{@html linkifyDocIds(note.text)}</p>
-													{#if note.images?.length}
-														<ImageGallery images={note.images} thumbnailSize={48} galleryId="note-{note.timestamp}" />
-													{/if}
-												</div>
-											{/each}
-										</div>
-									{/if}
 								</div>
 							{/if}
 						</div>
@@ -716,3 +873,49 @@
 		{/if}
 	{/if}
 </div>
+
+<style>
+	/* Compact markdown styling for descriptions, review steps, and note bodies.
+	   Deliberately tighter than @tailwindcss/typography's `prose` default —
+	   the feedback tracker rows are dense and full `prose` spacing blows them out. */
+	.markdown-block :global(p) { margin: 0 0 0.5em; }
+	.markdown-block :global(p:last-child) { margin-bottom: 0; }
+	.markdown-block :global(ul),
+	.markdown-block :global(ol) { margin: 0.25em 0 0.5em; padding-left: 1.5em; }
+	.markdown-block :global(ul) { list-style: disc; }
+	.markdown-block :global(ol) { list-style: decimal; }
+	.markdown-block :global(li) { margin: 0.15em 0; }
+	.markdown-block :global(li > p) { margin: 0; }
+	.markdown-block :global(a) { color: var(--color-interactive); text-decoration: underline; text-underline-offset: 2px; }
+	.markdown-block :global(a:hover) { text-decoration-thickness: 2px; }
+	.markdown-block :global(strong) { color: var(--color-text-primary); font-weight: 600; }
+	.markdown-block :global(em) { font-style: italic; }
+	.markdown-block :global(code) {
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		background: var(--color-surface-secondary);
+		padding: 0.05em 0.35em;
+		border-radius: 3px;
+		font-size: 0.92em;
+	}
+	.markdown-block :global(pre) {
+		background: var(--color-surface-secondary);
+		padding: 0.5em 0.75em;
+		border-radius: 4px;
+		overflow-x: auto;
+		margin: 0.5em 0;
+	}
+	.markdown-block :global(pre code) { background: transparent; padding: 0; }
+	.markdown-block :global(blockquote) {
+		border-left: 2px solid var(--color-surface-secondary);
+		padding-left: 0.75em;
+		margin: 0.5em 0;
+		color: var(--color-text-tertiary);
+	}
+	.markdown-block :global(h1),
+	.markdown-block :global(h2),
+	.markdown-block :global(h3) {
+		font-weight: 600;
+		color: var(--color-text-primary);
+		margin: 0.5em 0 0.25em;
+	}
+</style>
