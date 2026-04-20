@@ -233,19 +233,20 @@
 							{/if}
 
 							<!-- Full rendered content -->
-							<div class="prose prose-sm max-w-none
+							<div class="prose prose-sm dark:prose-invert max-w-none
 								text-text-theme-primary
 								prose-headings:text-text-theme-primary prose-headings:font-semibold
 								prose-h1:text-base prose-h1:mt-0 prose-h1:mb-3
 								prose-h2:text-sm prose-h2:mt-5 prose-h2:mb-2 prose-h2:border-b prose-h2:border-theme prose-h2:pb-1
 								prose-h3:text-xs prose-h3:mt-3 prose-h3:mb-1
 								prose-p:text-xs prose-p:leading-relaxed prose-p:my-2
-								prose-li:text-xs prose-li:leading-relaxed
+								prose-li:text-xs prose-li:leading-relaxed prose-li:text-text-theme-primary
 								prose-strong:text-text-theme-primary
-								prose-code:text-xs prose-code:font-mono prose-code:font-normal prose-code:bg-surface-secondary prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+								prose-code:text-xs prose-code:font-mono prose-code:font-normal prose-code:text-text-theme-primary prose-code:bg-surface-secondary prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+								prose-pre:bg-surface-secondary prose-pre:text-text-theme-primary prose-pre:border prose-pre:border-theme
 								prose-table:text-xs
-								prose-th:text-left prose-th:px-3 prose-th:py-1.5 prose-th:bg-surface-secondary prose-th:font-semibold
-								prose-td:px-3 prose-td:py-1.5 prose-td:border-t prose-td:border-theme
+								prose-th:text-left prose-th:px-3 prose-th:py-1.5 prose-th:bg-surface-secondary prose-th:font-semibold prose-th:text-text-theme-primary
+								prose-td:px-3 prose-td:py-1.5 prose-td:border-t prose-td:border-theme prose-td:text-text-theme-primary
 								prose-a:text-interactive prose-a:no-underline hover:prose-a:underline
 							">
 								{@html note.content_html}
