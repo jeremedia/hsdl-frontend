@@ -745,6 +745,7 @@
 										class="text-xs bg-transparent border border-transparent hover:border-theme rounded px-1 py-0.5 text-text-theme-secondary cursor-pointer transition-colors
 											{issue.priority === 'critical' ? '!text-red-500 font-semibold' : issue.priority === 'high' ? '!text-orange-500 font-semibold' : ''}"
 									>
+										<option value="none">none</option>
 										<option value="low">low</option>
 										<option value="normal">normal</option>
 										<option value="high">high</option>
