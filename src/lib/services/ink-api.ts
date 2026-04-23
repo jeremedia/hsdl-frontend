@@ -524,7 +524,15 @@ class InkApiClient {
 
 	// Vocabulary
 	async getVocabularyFields(): Promise<VocabularyField[]> {
-		return this.fetch('/vocabulary_fields');
+		// API returns {fields: [...]} wrapper; unwrap so callers get a plain
+		// array (matches the return-type annotation). Without this, the
+		// MetadataForm Vocabulary Terms section's #each iterates a plain
+		// object and renders nothing — issue 3d604d5a.
+		const res = await this.fetch<{ fields: VocabularyField[] } | VocabularyField[]>(
+			'/vocabulary_fields'
+		);
+		if (Array.isArray(res)) return res;
+		return res?.fields ?? [];
 	}
 
 	async getTerms(
