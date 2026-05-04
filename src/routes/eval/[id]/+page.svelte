@@ -2,11 +2,11 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { createQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
+	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { derived } from 'svelte/store';
 	import { inkApi } from '$lib/services/ink-api';
 	import type { GoldenQuery } from '$lib/services/ink-api';
-	import { ArrowLeft, Plus, Play, Trash2, Upload, Download, BarChart3, CheckCircle2 } from 'lucide-svelte';
+	import { ArrowLeft, Plus, Play, Trash2, Upload, BarChart3, CheckCircle2, Edit2, Save, X } from 'lucide-svelte';
 
 	let setId = $derived($page.params.id ?? '');
 	const queryClient = useQueryClient();
@@ -26,6 +26,12 @@
 	let newQueryText = $state('');
 	let newExpectedIds = $state('');
 
+	// Inline query editing
+	let editingQueryId = $state<string | null>(null);
+	let editQueryText = $state('');
+	let editExpectedIds = $state('');
+	let savingQueryId = $state<string | null>(null);
+
 	// Run creation
 	let runLabel = $state('');
 	let running = $state(false);
@@ -37,16 +43,47 @@
 	// Comparison selection
 	let selectedRuns = $state<Set<string>>(new Set());
 
+	function parseExpectedDocIds(value: string): number[] {
+		return value.trim()
+			? value.split(/[,\s]+/).map(Number).filter(n => !isNaN(n))
+			: [];
+	}
+
 	async function handleAddQuery() {
 		if (!newQueryText.trim()) return;
-		const expectedIds = newExpectedIds.trim()
-			? newExpectedIds.split(/[,\s]+/).map(Number).filter(n => !isNaN(n))
-			: [];
+		const expectedIds = parseExpectedDocIds(newExpectedIds);
 		await inkApi.addGoldenQuery(setId, { query_text: newQueryText.trim(), expected_doc_ids: expectedIds });
 		newQueryText = '';
 		newExpectedIds = '';
 		showAddQuery = false;
 		queryClient.invalidateQueries({ queryKey: ['ink', 'golden_set', setId] });
+	}
+
+	function startEditQuery(query: GoldenQuery) {
+		editingQueryId = query.id;
+		editQueryText = query.query_text;
+		editExpectedIds = query.expected_doc_ids.join(', ');
+	}
+
+	function cancelEditQuery() {
+		editingQueryId = null;
+		editQueryText = '';
+		editExpectedIds = '';
+	}
+
+	async function handleSaveQuery(queryId: string) {
+		if (!editQueryText.trim()) return;
+		savingQueryId = queryId;
+		try {
+			await inkApi.updateGoldenQuery(setId, queryId, {
+				query_text: editQueryText.trim(),
+				expected_doc_ids: parseExpectedDocIds(editExpectedIds)
+			});
+			cancelEditQuery();
+			await queryClient.invalidateQueries({ queryKey: ['ink', 'golden_set', setId] });
+		} finally {
+			savingQueryId = null;
+		}
 	}
 
 	async function handleDeleteQuery(queryId: string) {
@@ -167,16 +204,68 @@
 			{/if}
 
 			<div class="max-h-[400px] overflow-y-auto">
-				{#each data.queries as query, i}
-					<div class="flex items-center px-4 py-1.5 border-b border-theme text-xs hover:bg-surface-secondary transition-colors group">
-						<span class="w-8 text-text-theme-tertiary tabular-nums flex-shrink-0">{query.position}</span>
-						<span class="flex-1 text-text-theme-primary truncate">{query.query_text}</span>
-						{#if query.expected_doc_ids.length > 0}
-							<span class="text-text-theme-tertiary ml-2 flex-shrink-0">{query.expected_doc_ids.length} expected</span>
+				{#each data.queries as query}
+					<div class="px-4 py-1.5 border-b border-theme text-xs hover:bg-surface-secondary transition-colors group">
+						{#if editingQueryId === query.id}
+							<form onsubmit={(e) => { e.preventDefault(); handleSaveQuery(query.id); }} class="flex items-center gap-2">
+								<span class="w-8 text-text-theme-tertiary tabular-nums flex-shrink-0">{query.position}</span>
+								<input
+									type="text"
+									bind:value={editQueryText}
+									class="input text-xs py-1 flex-1 min-w-0"
+									aria-label="Query text"
+								/>
+								<input
+									type="text"
+									bind:value={editExpectedIds}
+									placeholder="Expected docIDs"
+									class="input text-xs py-1 w-40 flex-shrink-0"
+									aria-label="Expected document IDs"
+								/>
+								<button
+									type="submit"
+									disabled={!editQueryText.trim() || savingQueryId === query.id}
+									class="btn btn-primary text-xs py-1 px-2 flex-shrink-0"
+									aria-label="Save query"
+								>
+									<Save size={12} />
+									{savingQueryId === query.id ? 'Saving...' : 'Save'}
+								</button>
+								<button
+									type="button"
+									onclick={cancelEditQuery}
+									disabled={savingQueryId === query.id}
+									class="btn btn-outline text-xs py-1 px-2 flex-shrink-0"
+									aria-label="Cancel query edit"
+								>
+									<X size={12} />
+									Cancel
+								</button>
+							</form>
+						{:else}
+							<div class="flex items-center">
+								<span class="w-8 text-text-theme-tertiary tabular-nums flex-shrink-0">{query.position}</span>
+								<span class="flex-1 text-text-theme-primary truncate">{query.query_text}</span>
+								{#if query.expected_doc_ids.length > 0}
+									<span class="text-text-theme-tertiary ml-2 flex-shrink-0">{query.expected_doc_ids.length} expected</span>
+								{/if}
+								<button
+									onclick={() => startEditQuery(query)}
+									class="ml-2 p-1 rounded text-text-theme-tertiary hover:text-text-theme-primary"
+									aria-label="Edit query"
+									title="Edit query"
+								>
+									<Edit2 size={12} />
+								</button>
+								<button
+									onclick={() => handleDeleteQuery(query.id)}
+									class="ml-1 p-1 rounded text-text-theme-tertiary hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
+									aria-label="Delete query"
+								>
+									<Trash2 size={12} />
+								</button>
+							</div>
 						{/if}
-						<button onclick={() => handleDeleteQuery(query.id)} class="ml-2 p-1 rounded text-text-theme-tertiary hover:text-error opacity-0 group-hover:opacity-100 transition-opacity">
-							<Trash2 size={12} />
-						</button>
 					</div>
 				{/each}
 			</div>
