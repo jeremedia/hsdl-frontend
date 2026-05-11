@@ -31,7 +31,7 @@
 		"vite-plugin-pwa": "^1.2.0"
 	},
 	"dependencies": {
-		"@tanstack/svelte-query": "^5.62.0",
+		"@tanstack/svelte-query": "5.90.2",
 		"isomorphic-dompurify": "^2.36.0",
 		"lucide-svelte": "^0.468.0",
 		"marked": "^14.1.4",
