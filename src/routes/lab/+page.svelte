@@ -781,6 +781,21 @@
           oninput={(v) =>
             (dirtyHybrid = { ...dirtyHybrid, quality_banner_threshold: v })}
         />
+        <ParameterSlider
+          label="Related Similarity Threshold"
+          paramKey="semantic_similarity_threshold"
+          value={(hp("semantic_similarity_threshold") as number) ?? 0.55}
+          min={0.3}
+          max={0.8}
+          step={0.01}
+          description="Cosine distance cutoff for the Related (N) badge and the mode=semantic result set."
+          detailedDescription="Defines what 'semantically related but not keyword-matched' means. The badge counts docs the embedding caught under this distance that are NOT in the keyword set; clicking Related shows exactly those docs. Lower is stricter — fewer, more obviously related results. Higher is broader — more results, looser association. Validated for q='ransomware' at 0.55: catches Crimeware, Malware Threats, Backoff (PoS malware), Coreflood, Rogue Anti-Virus. 0.50 catches only the closest; 0.60 starts pulling in adjacent-but-loose topics."
+          scaleLabels={["0.30 (very strict)", "0.55 (default)", "0.80 (loose)"]}
+          disabled={config.locked}
+          formatValue={(v) => v.toFixed(2)}
+          oninput={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, semantic_similarity_threshold: v })}
+        />
       </AccordionSection>
 
       <AccordionSection

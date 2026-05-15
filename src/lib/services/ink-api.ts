@@ -74,6 +74,7 @@ export interface SearchConfigDetail extends SearchConfigSummary {
 		tab_section_boost_weight: number;
 		publisher_authority_tiers?: Record<string, { weight: number; publishers: string[] }>;
 		quality_banner_threshold: number;
+		semantic_similarity_threshold: number;
 	};
 	notes: string | null;
 }
