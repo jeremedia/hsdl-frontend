@@ -18,6 +18,7 @@
 	//     or Subject matches.
 
 	import { createQuery } from '@tanstack/svelte-query';
+	import { derived, writable } from 'svelte/store';
 	import { inkApi, type FilterTerm } from '$lib/services/ink-api';
 	import { X, Plus, Loader2 } from 'lucide-svelte';
 
@@ -44,15 +45,21 @@
 	});
 
 	// Resolve chip metadata for the currently-selected term IDs.
-	const chipsQuery = createQuery({
-		get queryKey() {
-			return ['ink', 'vocab-terms', 'lookup', termIds.slice().sort().join(',')] as const;
-		},
-		queryFn: () => inkApi.lookupVocabTerms(termIds),
-		get enabled() {
-			return termIds.length > 0;
-		}
+	// TanStack 5.90 uses Svelte stores for reactive query options, not
+	// $derived runes — without the writable+derived bridge the queryKey
+	// doesn't re-evaluate when termIds changes. See lab/+page.svelte for
+	// the pattern (selectedIdStore).
+	const termIdsStore = writable<string[]>([]);
+	$effect(() => {
+		termIdsStore.set(termIds);
 	});
+	const chipsQuery = createQuery(
+		derived(termIdsStore, ($ids) => ({
+			queryKey: ['ink', 'vocab-terms', 'lookup', $ids.slice().sort().join(',')] as const,
+			queryFn: () => inkApi.lookupVocabTerms($ids),
+			enabled: $ids.length > 0
+		}))
+	);
 
 	// Group resolved chips by field name so same-field selections sit
 	// together visually (this also mirrors the controller's OR-within /
@@ -92,16 +99,23 @@
 		};
 	});
 
-	let dropdownEnabled = $derived(showDropdown && debouncedQuery.length >= 2);
-	const searchQuery = createQuery({
-		get queryKey() {
-			return ['ink', 'vocab-terms', 'search', debouncedQuery] as const;
-		},
-		queryFn: () => inkApi.searchVocabTerms(debouncedQuery, 15),
-		get enabled() {
-			return dropdownEnabled;
-		}
+	// Same store bridge as chipsQuery — runes-derived values do not
+	// re-trigger createQuery's options accessor in TanStack 5.90.
+	const searchStateStore = writable<{ q: string; enabled: boolean }>({ q: '', enabled: false });
+	$effect(() => {
+		searchStateStore.set({
+			q: debouncedQuery,
+			enabled: showDropdown && debouncedQuery.length >= 2
+		});
 	});
+	const searchQuery = createQuery(
+		derived(searchStateStore, ($s) => ({
+			queryKey: ['ink', 'vocab-terms', 'search', $s.q] as const,
+			queryFn: () => inkApi.searchVocabTerms($s.q, 15),
+			enabled: $s.enabled
+		}))
+	);
+	let dropdownEnabled = $derived(showDropdown && debouncedQuery.length >= 2);
 
 	let candidates = $derived(() => {
 		const data = $searchQuery.data ?? [];
