@@ -402,6 +402,59 @@ export interface ReleaseNote {
 	content_html: string;
 }
 
+// Browse Editor types
+
+export type BrowseNodeKind = 'hub' | 'sub_hub' | 'collection_group' | 'collection_item';
+export type BrowseNodeMode = 'hybrid' | 'keyword';
+export type BrowseNodeVisibility = 'published' | 'draft';
+
+export interface BrowseNodeChild {
+	id: string;
+	slug: string;
+	name: string;
+	kind: BrowseNodeKind;
+	visibility: BrowseNodeVisibility;
+	position?: number | null;
+}
+
+export interface InkBrowseNode {
+	id: string;
+	slug: string;
+	name: string;
+	description: string | null;
+	kind: BrowseNodeKind;
+	query: string | null;
+	mode: BrowseNodeMode;
+	filters: Record<string, unknown>;
+	placement: Record<string, unknown>;
+	visibility: BrowseNodeVisibility;
+	parent_ids: string[];
+	position?: number | null;
+	children?: BrowseNodeChild[];
+	created_at?: string;
+	updated_at?: string;
+}
+
+export interface BrowseNodeListParams {
+	kind?: BrowseNodeKind;
+	parent_id?: string;
+	visibility?: BrowseNodeVisibility;
+}
+
+export interface BrowseNodePayload {
+	slug?: string;
+	name?: string;
+	description?: string | null;
+	kind?: BrowseNodeKind;
+	query?: string | null;
+	mode?: BrowseNodeMode;
+	filters?: Record<string, unknown>;
+	placement?: Record<string, unknown>;
+	visibility?: BrowseNodeVisibility;
+	parent_ids?: string[];
+	position?: number | null;
+}
+
 class InkApiClient {
 	private baseUrl: string;
 
@@ -664,6 +717,52 @@ class InkApiClient {
 
 	async previewSearch(data: { query: string; config_id?: string; config?: Partial<SearchConfigDetail> }): Promise<PreviewResponse> {
 		return this.fetch('/search_configs/preview', { method: 'POST', body: JSON.stringify(data) });
+	}
+
+	// Browse Editor
+	async listBrowseNodes(filters: BrowseNodeListParams = {}): Promise<InkBrowseNode[]> {
+		const searchParams = new URLSearchParams();
+		if (filters.kind) searchParams.set('kind', filters.kind);
+		if (filters.parent_id) searchParams.set('parent_id', filters.parent_id);
+		if (filters.visibility) searchParams.set('visibility', filters.visibility);
+		const qs = searchParams.toString();
+		// API returns { browse_nodes: [...] } — unwrap to a plain array for callers.
+		const res = await this.fetch<{ browse_nodes: InkBrowseNode[] } | InkBrowseNode[]>(
+			`/browse_nodes${qs ? '?' + qs : ''}`
+		);
+		if (Array.isArray(res)) return res;
+		return res?.browse_nodes ?? [];
+	}
+
+	async getBrowseNode(id: string): Promise<InkBrowseNode> {
+		const res = await this.fetch<{ browse_node: InkBrowseNode }>(`/browse_nodes/${id}`);
+		return res.browse_node;
+	}
+
+	async createBrowseNode(payload: BrowseNodePayload): Promise<InkBrowseNode> {
+		const res = await this.fetch<{ browse_node: InkBrowseNode }>('/browse_nodes', {
+			method: 'POST',
+			body: JSON.stringify({ browse_node: payload })
+		});
+		return res.browse_node;
+	}
+
+	async updateBrowseNode(id: string, payload: BrowseNodePayload): Promise<InkBrowseNode> {
+		const res = await this.fetch<{ browse_node: InkBrowseNode }>(`/browse_nodes/${id}`, {
+			method: 'PATCH',
+			body: JSON.stringify({ browse_node: payload })
+		});
+		return res.browse_node;
+	}
+
+	async deleteBrowseNode(id: string): Promise<void> {
+		const url = `${this.baseUrl}/browse_nodes/${id}`;
+		const response = await fetch(url, {
+			method: 'DELETE',
+			credentials: 'include',
+			headers: { 'Content-Type': 'application/json' }
+		});
+		if (!response.ok) throw new InkApiError(response.status, `Delete failed: ${response.statusText}`);
 	}
 }
 

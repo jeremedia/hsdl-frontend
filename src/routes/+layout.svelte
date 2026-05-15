@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { inkApi } from '$lib/services/ink-api';
-	import { LayoutDashboard, FileText, Search, Info, Menu, X, Keyboard, Sun, Moon, Monitor, Zap, BarChart3, SlidersHorizontal, MessageSquare } from 'lucide-svelte';
+	import { LayoutDashboard, FileText, Search, Info, Menu, X, Keyboard, Sun, Moon, Monitor, Zap, BarChart3, SlidersHorizontal, MessageSquare, FolderTree } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { initTheme, destroyTheme, setColorMode, getThemeState, type ColorMode } from '$lib/stores/theme.svelte';
 	import '../app.css';
@@ -74,6 +74,7 @@
 		{ href: `${base}/`, label: 'Dashboard', icon: LayoutDashboard },
 		{ href: `${base}/documents`, label: 'Documents', icon: FileText },
 		{ href: `${base}/search`, label: 'Search', icon: Search },
+		{ href: `${base}/browse`, label: 'Browse', icon: FolderTree },
 		{ href: `${base}/enrichment`, label: 'Enrichment', icon: Zap },
 		{ href: `${base}/eval`, label: 'Eval', icon: BarChart3 },
 		{ href: `${base}/lab`, label: 'Lab', icon: SlidersHorizontal },
