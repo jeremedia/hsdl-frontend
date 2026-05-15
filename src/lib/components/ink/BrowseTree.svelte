@@ -11,7 +11,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { dndzone, type DndEvent } from 'svelte-dnd-action';
 	import BrowseTreeNode from './BrowseTreeNode.svelte';
-	import { createBrowseTreeState } from '$lib/composables/useBrowseTreeState';
+	import { createBrowseTreeState } from '$lib/composables/useBrowseTreeState.svelte';
 	import { inkApi, type InkBrowseNode } from '$lib/services/ink-api';
 
 	type TreeNode = InkBrowseNode & { childList: TreeNode[] };

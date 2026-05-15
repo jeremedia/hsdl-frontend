@@ -12,7 +12,7 @@
 	import { Folder, FolderTree, Box, FileText, ChevronRight, ChevronDown } from 'lucide-svelte';
 	import { dndzone, type DndEvent } from 'svelte-dnd-action';
 	import type { InkBrowseNode } from '$lib/services/ink-api';
-	import type { BrowseTreeState } from '$lib/composables/useBrowseTreeState';
+	import type { BrowseTreeState } from '$lib/composables/useBrowseTreeState.svelte';
 
 	type TreeNode = InkBrowseNode & { childList: TreeNode[] };
 
@@ -36,13 +36,13 @@
 		ondndfinalize: (parentId: string, items: TreeNode[]) => void;
 	} = $props();
 
-	// Extract the underlying store from the BrowseTreeState plain object
-	// so the $-prefix auto-subscribe sees a real store (not a wrapping
-	// object). `$state.collapsed` is the trap — Svelte interprets `$state`
-	// as auto-subscribe on `state` and throws "subscribe is not a function"
-	// because the BrowseTreeState wrapper isn't itself a store.
-	const collapsedStore = state.collapsed;
-	let isCollapsed = $derived($collapsedStore.has(node.id));
+	// BrowseTreeState is a class with runes-state inside; reading
+	// `state.collapsedIds.has(id)` from within a $derived gives us
+	// the same reactivity Svelte applies to plain runes-state property
+	// access. No store, no auto-subscribe — that path triggered
+	// "subscribe is not a function" at flush time in the previous
+	// store-based version.
+	let isCollapsed = $derived(state.collapsedIds.has(node.id));
 	let hasChildren = $derived((node.childList?.length ?? 0) > 0);
 	let isTop = $derived(depth === 0);
 

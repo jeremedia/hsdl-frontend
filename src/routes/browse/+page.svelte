@@ -440,7 +440,7 @@
 </script>
 
 <svelte:head>
-  <title>Browse Editor | INK</title>
+  <title>Browse Navigation Editor | INK</title>
 </svelte:head>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -448,7 +448,7 @@
 <!-- Header -->
 <div class="flex items-center justify-between mb-3">
   <div>
-    <h1 class="text-lg font-bold text-text-theme-primary">Browse Editor</h1>
+    <h1 class="text-lg font-bold text-text-theme-primary">Browse Navigation Editor</h1>
     <p class="text-[11px] text-text-theme-tertiary mt-0.5 leading-snug">
       Author hubs, sub-hubs, collection groups, and items. Each node is a named
       search.
