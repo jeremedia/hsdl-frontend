@@ -237,9 +237,16 @@
   // First-pass UI: render as a flat list grouped by kind. Sub-hubs nest under
   // their first parent hub. Collection items nest under their first parent group.
   // Cross-assignment is shown via the parent_ids text input on the detail panel.
+  // Tree node carries its own children, recursively. A collection_group may
+  // contain both collection_items and nested collection_groups (e.g.
+  // Presidential Documents under Policy & Strategy — spec §6.4 + §23 Q1).
+  // The render template recurses on `childList`, so depth is open-ended even
+  // though current V1.0 taxonomy only uses three levels for the Presidential
+  // Documents case.
+  type TreeNode = InkBrowseNode & { childList: TreeNode[] };
   type TreeBucket = {
     label: string;
-    nodes: Array<InkBrowseNode & { childList: InkBrowseNode[] }>;
+    nodes: TreeNode[];
   };
 
   let tree = $derived(buildTree($nodesQuery.data ?? []));
@@ -260,24 +267,42 @@
       return (a.name ?? "").localeCompare(b.name ?? "");
     };
 
-    const attachChildren = (
-      parents: InkBrowseNode[],
+    // Recursive: build a TreeNode for `parent`, walking its children
+    // through any candidate kinds. Used for both the hubs subtree (hub →
+    // sub_hubs) and the collection groups subtree (group → items +
+    // nested groups → admin items).
+    const buildSubtree = (
+      parent: InkBrowseNode,
       candidates: InkBrowseNode[],
-    ) =>
-      parents.sort(sortByPos).map((p) => ({
-        ...p,
-        childList: candidates
-          .filter((c) => (c.parent_ids ?? []).includes(p.id))
-          .sort(sortByPos),
-      }));
+    ): TreeNode => {
+      const childNodes = candidates
+        .filter((c) => (c.parent_ids ?? []).includes(parent.id))
+        .sort(sortByPos);
+      return {
+        ...parent,
+        childList: childNodes.map((c) => buildSubtree(c, candidates)),
+      };
+    };
+
+    // Top-level collection_groups: those whose parents are NOT themselves
+    // collection_groups. Nested groups (Presidential Documents) attach
+    // under their parent group instead of floating at top level.
+    const groupParentIds = new Set(groups.map((g) => g.id));
+    const topLevelGroups = groups.filter(
+      (g) => !(g.parent_ids ?? []).some((pid) => groupParentIds.has(pid)),
+    );
+    // Candidates for a group's children: all items + all nested groups.
+    const groupCandidates = [...items, ...groups];
 
     const hubBucket: TreeBucket = {
       label: "Hubs",
-      nodes: attachChildren(hubs, subHubs),
+      nodes: hubs.sort(sortByPos).map((h) => buildSubtree(h, subHubs)),
     };
     const groupBucket: TreeBucket = {
       label: "Collection Groups",
-      nodes: attachChildren(groups, items),
+      nodes: topLevelGroups
+        .sort(sortByPos)
+        .map((g) => buildSubtree(g, groupCandidates)),
     };
 
     const orphanSubHubs = subHubs.filter(
@@ -475,6 +500,43 @@
       </div>
     {:else}
       <div class="space-y-4">
+        {#snippet treeRow(node: TreeNode, depth: number)}
+          {@const isTop = depth === 0}
+          <li>
+            <button
+              type="button"
+              class="w-full flex items-center gap-2 px-2 rounded text-left transition-colors
+                {isTop ? 'py-1.5 text-xs' : 'py-1 text-[11px]'}
+                {selectedId === node.id && !creatingNew
+                ? 'bg-primary-100 text-primary-700'
+                : 'text-text-theme-secondary hover:bg-surface-secondary hover:text-text-theme-primary'}"
+              onclick={() => trySelect(node.id)}
+            >
+              <span
+                class="flex-shrink-0 inline-block rounded-full
+                  {isTop ? 'w-2 h-2' : 'w-1.5 h-1.5'}
+                  {node.visibility === 'published'
+                  ? 'bg-green-500'
+                  : 'border border-text-theme-tertiary'}"
+                title={node.visibility}
+              ></span>
+              <span class="truncate flex-1">{node.name || node.slug}</span>
+              <span
+                class="text-[9px] uppercase tracking-wider text-text-theme-tertiary flex-shrink-0"
+              >
+                {kindLabel(node.kind)}
+              </span>
+            </button>
+            {#if node.childList?.length}
+              <ul class="mt-0.5 ml-3 border-l border-theme pl-2 space-y-0.5">
+                {#each node.childList as child}
+                  {@render treeRow(child, depth + 1)}
+                {/each}
+              </ul>
+            {/if}
+          </li>
+        {/snippet}
+
         {#each tree as bucket}
           {#if bucket.nodes.length > 0}
             <div>
@@ -485,62 +547,7 @@
               </div>
               <ul class="space-y-0.5">
                 {#each bucket.nodes as node}
-                  <li>
-                    <button
-                      type="button"
-                      class="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-xs transition-colors
-                        {selectedId === node.id && !creatingNew
-                        ? 'bg-primary-100 text-primary-700'
-                        : 'text-text-theme-secondary hover:bg-surface-secondary hover:text-text-theme-primary'}"
-                      onclick={() => trySelect(node.id)}
-                    >
-                      <span
-                        class="flex-shrink-0 inline-block w-2 h-2 rounded-full
-                          {node.visibility === 'published'
-                          ? 'bg-green-500'
-                          : 'border border-text-theme-tertiary'}"
-                        title={node.visibility}
-                      ></span>
-                      <span class="truncate flex-1">{node.name || node.slug}</span>
-                      <span
-                        class="text-[9px] uppercase tracking-wider text-text-theme-tertiary flex-shrink-0"
-                      >
-                        {kindLabel(node.kind)}
-                      </span>
-                    </button>
-                    {#if node.childList?.length}
-                      <ul class="mt-0.5 ml-3 border-l border-theme pl-2 space-y-0.5">
-                        {#each node.childList as child}
-                          <li>
-                            <button
-                              type="button"
-                              class="w-full flex items-center gap-2 px-2 py-1 rounded text-left text-[11px] transition-colors
-                                {selectedId === child.id && !creatingNew
-                                ? 'bg-primary-100 text-primary-700'
-                                : 'text-text-theme-secondary hover:bg-surface-secondary hover:text-text-theme-primary'}"
-                              onclick={() => trySelect(child.id)}
-                            >
-                              <span
-                                class="flex-shrink-0 inline-block w-1.5 h-1.5 rounded-full
-                                  {child.visibility === 'published'
-                                  ? 'bg-green-500'
-                                  : 'border border-text-theme-tertiary'}"
-                                title={child.visibility}
-                              ></span>
-                              <span class="truncate flex-1"
-                                >{child.name || child.slug}</span
-                              >
-                              <span
-                                class="text-[9px] uppercase tracking-wider text-text-theme-tertiary flex-shrink-0"
-                              >
-                                {kindLabel(child.kind)}
-                              </span>
-                            </button>
-                          </li>
-                        {/each}
-                      </ul>
-                    {/if}
-                  </li>
+                  {@render treeRow(node, 0)}
                 {/each}
               </ul>
             </div>
