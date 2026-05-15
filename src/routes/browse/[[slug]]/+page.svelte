@@ -755,7 +755,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-[1fr_120px] gap-3">
+        <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-medium text-text-theme-secondary mb-1">Parents</label>
             <ParentPicker

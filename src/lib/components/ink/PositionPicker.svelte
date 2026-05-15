@@ -208,18 +208,41 @@
 			</p>
 		{/if}
 
-		<!-- Siblings list. Read-only context. -->
+		<!-- Siblings list. Read-only context. Selected row uses
+		     bg-surface-secondary (theme tokens that already exist on
+		     both light and dark) — a calm step up from the elevated
+		     card surface, not the blinding near-white that
+		     bg-primary-100 produced in the chds dark theme (primary
+		     scale is inverted there, so primary-100 = darkest blue,
+		     primary-900 = lightest). All text colors flip to the
+		     high-contrast primary token so row content stays
+		     readable on the highlight (Jeremy 2026-05-15 5:30 PM).
+
+		     Tailwind opacity modifiers (eg bg-primary-500/15) don't
+		     work against this codebase's hex-valued CSS variables —
+		     Tailwind silently drops the rule. Stick to solid utility
+		     classes that map to var(--color-…) directly. -->
 		<ul class="border border-border-theme rounded text-[11px] divide-y divide-border-theme max-h-56 overflow-y-auto bg-surface-elevated">
 			{#each siblings() as sib, i (sib.id)}
+				{@const selected = sib.id === nodeId}
 				<li
 					class="flex items-center gap-2 px-2 py-1
-					{sib.id === nodeId ? 'bg-primary-100 dark:bg-primary-900/40 font-medium' : ''}"
+					{selected ? 'bg-surface-secondary font-medium' : ''}"
 				>
-					<span class="w-3 text-text-theme-tertiary text-[10px]">
-						{#if sib.id === nodeId}►{:else}&nbsp;{/if}
+					<span
+						class="w-3 text-[10px] font-bold
+						{selected ? 'text-text-theme-primary' : 'text-text-theme-tertiary'}"
+					>
+						{#if selected}►{:else}&nbsp;{/if}
 					</span>
-					<span class="tabular-nums text-text-theme-tertiary w-5 text-right">{i}</span>
-					<span class="truncate flex-1 min-w-0">{sib.name}</span>
+					<span
+						class="tabular-nums w-5 text-right
+						{selected ? 'text-text-theme-primary' : 'text-text-theme-tertiary'}"
+					>{i}</span>
+					<span
+						class="truncate flex-1 min-w-0
+						{selected ? 'text-text-theme-primary' : 'text-text-theme-secondary'}"
+					>{sib.name}</span>
 				</li>
 			{/each}
 		</ul>
