@@ -14,6 +14,7 @@
     BrowseNodePayload,
   } from "$lib/services/ink-api";
   import { Check, Plus, Trash2, AlertCircle } from "lucide-svelte";
+  import FilterPicker from "$lib/components/ink/FilterPicker.svelte";
 
   const queryClient = useQueryClient();
 
@@ -797,21 +798,21 @@
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label
-              class="block text-xs font-medium text-text-theme-secondary mb-1"
-              for="bn-filters">Filters (JSON)</label
-            >
-            <textarea
-              id="bn-filters"
-              class="input font-mono text-[11px]"
-              rows="6"
-              value={form.filters_text}
-              oninput={(e) =>
+            <label class="block text-xs font-medium text-text-theme-secondary mb-1">Filters</label>
+            <FilterPicker
+              filters={(() => {
+                try {
+                  return form.filters_text.trim() ? JSON.parse(form.filters_text) : {};
+                } catch {
+                  return {};
+                }
+              })()}
+              onchange={(next) =>
                 (form = {
                   ...form,
-                  filters_text: (e.currentTarget as HTMLTextAreaElement).value,
+                  filters_text: JSON.stringify(next, null, 2),
                 })}
-            ></textarea>
+            />
             {#if jsonError.filters}
               <p class="text-[10px] text-red-600 mt-1">{jsonError.filters}</p>
             {/if}

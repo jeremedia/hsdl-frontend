@@ -140,6 +140,16 @@ export interface VocabularyTerm {
 	vocabulary_term_relations_count: number;
 }
 
+// Cross-field vocab term shape returned by /vocabulary_terms/search and
+// /vocabulary_terms/lookup. Carries `field` (the vocabulary field name)
+// so the FilterPicker can group chips and label dropdown rows.
+export interface FilterTerm {
+	id: string;
+	name: string;
+	field: string | null;
+	document_count: number;
+}
+
 export interface EnrichmentCoverage {
 	count: number;
 	total: number;
@@ -600,6 +610,25 @@ class InkApiClient {
 
 		const query = searchParams.toString();
 		return this.fetch(`/vocabulary_fields/${fieldId}/terms${query ? `?${query}` : ''}`);
+	}
+
+	// Cross-field vocab term autocomplete for the BrowseNode filter picker.
+	// Returns FilterTerm[] (id + name + field + count) ordered by usage.
+	async searchVocabTerms(q: string, limit = 15): Promise<FilterTerm[]> {
+		if (!q || q.length < 2) return [];
+		const sp = new URLSearchParams({ q, limit: String(limit) });
+		const res = await this.fetch<{ terms: FilterTerm[] }>(`/vocabulary_terms/search?${sp}`);
+		return res.terms ?? [];
+	}
+
+	// Batch resolve term UUIDs to FilterTerm. Used to hydrate chips
+	// for filters previously saved on a BrowseNode.
+	async lookupVocabTerms(ids: string[]): Promise<FilterTerm[]> {
+		if (!ids.length) return [];
+		const sp = new URLSearchParams();
+		for (const id of ids) sp.append('ids[]', id);
+		const res = await this.fetch<{ terms: FilterTerm[] }>(`/vocabulary_terms/lookup?${sp}`);
+		return res.terms ?? [];
 	}
 
 	// Document terms
