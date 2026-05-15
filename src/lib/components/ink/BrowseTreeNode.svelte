@@ -124,25 +124,31 @@
 					: 'border border-text-theme-tertiary'}"
 				title={node.visibility}
 			></span>
-			<span class="truncate">{node.name || node.slug}</span>
-			{#if hasChildren}
-				<span class="text-[10px] tabular-nums text-text-theme-tertiary flex-shrink-0">
-					· {node.childList.length}
+			<span class="truncate min-w-0 flex-1">{node.name || node.slug}</span>
+			<!-- Metadata cluster — pushed to the right edge of the row so
+			     short names don't drag their badges into the middle of
+			     the column and long names truncate cleanly with the
+			     badges flush to the right. -->
+			<span class="ml-auto flex items-center gap-1.5 flex-shrink-0">
+				{#if hasChildren}
+					<span class="text-[10px] tabular-nums text-text-theme-tertiary">
+						· {node.childList.length}
+					</span>
+				{/if}
+				{#if typeof node.cached_doc_count === 'number'}
+					<span
+						class="text-[10px] tabular-nums
+						{node.cached_doc_count === 0 ? 'text-amber-600 dark:text-amber-400' : 'text-text-theme-tertiary'}"
+						title={node.cached_doc_count === 0
+							? 'Zero docs match this collection — check filters or query.'
+							: `${node.cached_doc_count.toLocaleString()} docs`}
+					>
+						· {node.cached_doc_count.toLocaleString()} docs
+					</span>
+				{/if}
+				<span class="text-[9px] uppercase tracking-wider text-text-theme-tertiary">
+					{kindLabel(node.kind)}
 				</span>
-			{/if}
-			{#if typeof node.cached_doc_count === 'number'}
-				<span
-					class="text-[10px] tabular-nums flex-shrink-0
-					{node.cached_doc_count === 0 ? 'text-amber-600 dark:text-amber-400' : 'text-text-theme-tertiary'}"
-					title={node.cached_doc_count === 0
-						? 'Zero docs match this collection — check filters or query.'
-						: `${node.cached_doc_count.toLocaleString()} docs`}
-				>
-					· {node.cached_doc_count.toLocaleString()} docs
-				</span>
-			{/if}
-			<span class="text-[9px] uppercase tracking-wider text-text-theme-tertiary flex-shrink-0">
-				{kindLabel(node.kind)}
 			</span>
 		</button>
 	</div>

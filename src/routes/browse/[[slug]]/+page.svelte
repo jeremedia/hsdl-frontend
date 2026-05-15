@@ -20,6 +20,7 @@
   import PlacementPicker from "$lib/components/ink/PlacementPicker.svelte";
   import ParentPicker from "$lib/components/ink/ParentPicker.svelte";
   import BrowseTree from "$lib/components/ink/BrowseTree.svelte";
+  import ColumnResizer from "$lib/components/ink/ColumnResizer.svelte";
 
   const queryClient = useQueryClient();
 
@@ -513,8 +514,12 @@
   </div>
 </div>
 
-<!-- Two-column layout -->
-<div class="grid grid-cols-[320px_1fr] gap-4">
+<!-- Two-column layout with a draggable resizer between the columns.
+     --tree-width is set by ColumnResizer on mount (from localStorage)
+     and updated during drag. The handle gets its own narrow grid
+     track so the visible resize bar is part of the layout, not an
+     overlay. -->
+<div class="grid grid-cols-[var(--tree-width,320px)_8px_1fr] gap-0" id="browse-shell">
   <!-- LEFT: Tree rail -->
   <aside
     class="card p-3 lg:sticky lg:top-3 lg:self-start lg:max-h-[calc(100vh-1.5rem)] lg:overflow-y-auto"
@@ -570,6 +575,9 @@
       />
     {/if}
   </aside>
+
+  <!-- Draggable column divider. Sits in its own narrow grid track. -->
+  <ColumnResizer scope="#browse-shell" min={220} max={720} defaultWidth={320} />
 
   <!-- RIGHT: Detail editor -->
   <section class="card p-4">
