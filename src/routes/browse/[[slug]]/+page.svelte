@@ -14,6 +14,8 @@
     BrowseNodePayload,
   } from "$lib/services/ink-api";
   import { Check, Plus, Trash2, AlertCircle } from "lucide-svelte";
+  import { page } from "$app/stores";
+  import { goto } from "$app/navigation";
   import FilterPicker from "$lib/components/ink/FilterPicker.svelte";
   import PlacementPicker from "$lib/components/ink/PlacementPicker.svelte";
   import ParentPicker from "$lib/components/ink/ParentPicker.svelte";
@@ -28,8 +30,33 @@
   });
 
   // --- Selection state ---
+  // Lives in the URL path: /ink/browse/<slug> selects a node by its
+  // BrowseNode slug. /ink/browse with no slug is the "nothing selected"
+  // state. Selection changes drive `goto()`; URL changes (back/forward,
+  // deep link, reload) drive selection via the $effect below.
   let selectedId = $state<string | null>(null);
   let creatingNew = $state(false);
+
+  // Resolve a slug to a node id once the nodes list has loaded. Until
+  // the list resolves on first visit we hold the desired slug in
+  // pendingSlug and apply it on the next $effect tick.
+  function resolveSlugToId(slug: string | undefined, nodes: InkBrowseNode[] | undefined): string | null {
+    if (!slug || !nodes) return null;
+    const match = nodes.find((n) => n.slug === slug);
+    return match ? match.id : null;
+  }
+
+  // URL → selection. Runs whenever $page.params.slug changes OR the
+  // nodes list arrives. Skipped when creatingNew is active so the
+  // user's new-node draft isn't blown away by a stray nav.
+  $effect(() => {
+    if (creatingNew) return;
+    const slug = $page.params.slug;
+    const list = $nodesQuery.data;
+    if (!list) return;
+    const resolved = resolveSlugToId(slug, list);
+    if (resolved !== selectedId) selectedId = resolved;
+  });
 
   // TanStack uses stores, not runes — wrap selectedId in a store for the
   // detail query, same pattern as the lab page (selectedIdStore).
@@ -169,6 +196,15 @@
           queryKey: ["ink", "browse_node", result.id],
         });
       }
+      // Sync URL to the saved node's slug. Create+save lands on
+      // /ink/browse/<new-slug>; edit+save with a slug change updates
+      // the URL so deep-links keep working after rename.
+      if (result?.slug) {
+        const target = `/ink/browse/${result.slug}`;
+        if ($page.url.pathname !== target) {
+          void goto(target, { replaceState: true, keepFocus: true, noScroll: true });
+        }
+      }
       showToast("Browse node saved", "success");
     },
     onError: (err: Error) => {
@@ -183,6 +219,10 @@
       selectedId = null;
       creatingNew = false;
       queryClient.invalidateQueries({ queryKey: ["ink", "browse_nodes"] });
+      // Drop the slug from the URL on delete.
+      if ($page.url.pathname !== "/ink/browse") {
+        void goto("/ink/browse", { replaceState: true, keepFocus: true, noScroll: true });
+      }
       showToast("Browse node deleted", "success");
     },
     onError: (err: Error) => {
@@ -345,6 +385,17 @@
     }
     creatingNew = false;
     selectedId = id;
+    // Push the slug into the URL so deep links and back-button work.
+    // replaceState avoids stacking a history entry per click within
+    // the same editor session — back goes to wherever you came from
+    // rather than walking through every node you peeked at.
+    const node = ($nodesQuery.data ?? []).find((n) => n.id === id);
+    if (node?.slug) {
+      const target = `/ink/browse/${node.slug}`;
+      if ($page.url.pathname !== target) {
+        void goto(target, { replaceState: true, keepFocus: true, noScroll: true });
+      }
+    }
   }
 
   function startNew() {
@@ -360,6 +411,12 @@
     initialFormSnapshot = formSnapshot(blankForm());
     formError = null;
     jsonError = { filters: null, placement: null };
+    // Clear the slug from the URL — "new" is a no-slug state. The
+    // URL flips to the new slug after a successful save (see the
+    // save mutation's onSuccess).
+    if ($page.url.pathname !== "/ink/browse") {
+      void goto("/ink/browse", { replaceState: true, keepFocus: true, noScroll: true });
+    }
   }
 
   function cancelEdit() {
