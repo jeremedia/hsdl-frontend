@@ -73,25 +73,32 @@
 		return siblings().findIndex((n) => n.id === nodeId);
 	});
 
-	// Reorder driver. Calls the /reorder endpoint with action=move,
-	// updates local position state on success, bubbles refresh up so
-	// the tree resorts.
-	async function moveTo(newPosition: number) {
+	// Reorder driver. Takes a target *index* in the rendered sibling
+	// ordering (NOT the stored position field). This matters: until
+	// renumber_children! runs server-side, multiple siblings can share
+	// position=0 and sort alphabetically. Using currentPosition for
+	// button math then makes "up/down" jump to the wrong slot, and
+	// "top" silently no-ops when currentPosition already equals 0.
+	// Driving off the rendered index is the only thing that matches
+	// what the curator sees.
+	async function moveToIndex(newIndex: number) {
 		if (!nodeId || !parentId) return;
-		if (newPosition === currentPosition) return;
+		const list = siblings();
+		if (newIndex < 0 || newIndex >= list.length) return;
+		if (newIndex === currentIndex()) return;
 		busy = true;
 		lastError = null;
 		try {
 			const updated = await inkApi.reorderBrowseNode(nodeId, {
 				parent_id: parentId,
-				position: newPosition,
+				// Server treats `position` as the target index; its
+				// renumber_children! then rebalances siblings to 0..N-1
+				// before responding.
+				position: newIndex,
 				op: 'move'
 			});
-			// The endpoint returns the full detail payload after
-			// renumber_children! has rebalanced siblings 0..N-1.
-			// Pick the new position from the relevant parent edge.
 			const edge = (updated.parents ?? []).find((p: any) => p.id === parentId);
-			currentPosition = edge?.position ?? newPosition;
+			currentPosition = edge?.position ?? newIndex;
 			onreordered();
 		} catch (err) {
 			lastError = (err as Error).message || 'Reorder failed';
@@ -103,22 +110,23 @@
 	function moveUp() {
 		const idx = currentIndex();
 		if (idx <= 0) return;
-		moveTo(Math.max(0, currentPosition - 1));
+		moveToIndex(idx - 1);
 	}
 	function moveDown() {
 		const idx = currentIndex();
 		const list = siblings();
 		if (idx === -1 || idx >= list.length - 1) return;
-		moveTo(currentPosition + 1);
+		moveToIndex(idx + 1);
 	}
 	function moveToTop() {
 		if (currentIndex() <= 0) return;
-		moveTo(0);
+		moveToIndex(0);
 	}
 	function moveToBottom() {
 		const list = siblings();
-		if (currentIndex() === list.length - 1) return;
-		moveTo(list.length - 1);
+		const idx = currentIndex();
+		if (idx === -1 || idx === list.length - 1) return;
+		moveToIndex(list.length - 1);
 	}
 
 	// Quick lookup so the parent name renders without an extra query.
@@ -148,7 +156,10 @@
 		<!-- Header row: position + parent context + buttons -->
 		<div class="flex items-center justify-between gap-2">
 			<div class="text-[11px] text-text-theme-secondary">
-				<span class="tabular-nums">{currentPosition + 1}</span>
+				<!-- Header reflects rendered index, not stored position
+				     (same reason the buttons drive off currentIndex):
+				     pre-renumber, currentPosition is unreliable. -->
+				<span class="tabular-nums">{currentIndex() + 1}</span>
 				of
 				<span class="tabular-nums">{siblings().length}</span>
 				{#if parentName()}
