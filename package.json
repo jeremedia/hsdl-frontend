@@ -36,6 +36,7 @@
 		"lucide-svelte": "^0.468.0",
 		"marked": "^14.1.4",
 		"photoswipe": "^5.4.4",
+		"svelte-dnd-action": "^0.9.69",
 		"workbox-window": "^7.3.0"
 	},
 	"overrides": {

@@ -444,6 +444,16 @@ export interface InkBrowseNode {
 	children?: BrowseNodeChild[];
 	created_at?: string;
 	updated_at?: string;
+	// Phase 1 BrowseTree fields (cached_doc_count populated by
+	// BrowseNodeCountJob; null when not yet computed).
+	cached_doc_count?: number | null;
+}
+
+export type BrowseTreeReorderOp = 'move' | 'cross_assign';
+export interface BrowseTreeReorderPayload {
+	parent_id: string | null;
+	position: number;
+	op: BrowseTreeReorderOp;
 }
 
 export interface BrowseNodeListParams {
@@ -786,6 +796,17 @@ class InkApiClient {
 			method: 'PATCH',
 			body: JSON.stringify({ browse_node: payload })
 		});
+		return res.browse_node;
+	}
+
+	// Atomic move (or cross-assign) for the BrowseTree drag-and-drop UX.
+	// See app/controllers/api/ink/v1/browse_nodes_controller.rb#reorder for
+	// the contract (move vs cross_assign, multi-parent 409, etc.).
+	async reorderBrowseNode(id: string, payload: BrowseTreeReorderPayload): Promise<InkBrowseNode> {
+		const res = await this.fetch<{ browse_node: InkBrowseNode }>(
+			`/browse_nodes/${id}/reorder`,
+			{ method: 'POST', body: JSON.stringify(payload) }
+		);
 		return res.browse_node;
 	}
 

@@ -17,6 +17,7 @@
   import FilterPicker from "$lib/components/ink/FilterPicker.svelte";
   import PlacementPicker from "$lib/components/ink/PlacementPicker.svelte";
   import ParentPicker from "$lib/components/ink/ParentPicker.svelte";
+  import BrowseTree from "$lib/components/ink/BrowseTree.svelte";
 
   const queryClient = useQueryClient();
 
@@ -502,61 +503,14 @@
         No browse nodes yet. Click <b>New</b> to create one.
       </div>
     {:else}
-      <div class="space-y-4">
-        {#snippet treeRow(node: TreeNode, depth: number)}
-          {@const isTop = depth === 0}
-          <li>
-            <button
-              type="button"
-              class="w-full flex items-center gap-2 px-2 rounded text-left transition-colors
-                {isTop ? 'py-1.5 text-xs' : 'py-1 text-[11px]'}
-                {selectedId === node.id && !creatingNew
-                ? 'bg-primary-100 text-primary-700'
-                : 'text-text-theme-secondary hover:bg-surface-secondary hover:text-text-theme-primary'}"
-              onclick={() => trySelect(node.id)}
-            >
-              <span
-                class="flex-shrink-0 inline-block rounded-full
-                  {isTop ? 'w-2 h-2' : 'w-1.5 h-1.5'}
-                  {node.visibility === 'published'
-                  ? 'bg-green-500'
-                  : 'border border-text-theme-tertiary'}"
-                title={node.visibility}
-              ></span>
-              <span class="truncate flex-1">{node.name || node.slug}</span>
-              <span
-                class="text-[9px] uppercase tracking-wider text-text-theme-tertiary flex-shrink-0"
-              >
-                {kindLabel(node.kind)}
-              </span>
-            </button>
-            {#if node.childList?.length}
-              <ul class="mt-0.5 ml-3 border-l border-theme pl-2 space-y-0.5">
-                {#each node.childList as child}
-                  {@render treeRow(child, depth + 1)}
-                {/each}
-              </ul>
-            {/if}
-          </li>
-        {/snippet}
-
-        {#each tree as bucket}
-          {#if bucket.nodes.length > 0}
-            <div>
-              <div
-                class="text-[10px] font-semibold text-text-theme-tertiary uppercase tracking-wider mb-1 px-1"
-              >
-                {bucket.label}
-              </div>
-              <ul class="space-y-0.5">
-                {#each bucket.nodes as node}
-                  {@render treeRow(node, 0)}
-                {/each}
-              </ul>
-            </div>
-          {/if}
-        {/each}
-      </div>
+      <BrowseTree
+        buckets={tree}
+        {selectedId}
+        {creatingNew}
+        userId="anon"
+        onselect={(id) => trySelect(id)}
+        onreordered={() => queryClient.invalidateQueries({ queryKey: ["ink", "browse_nodes"] })}
+      />
     {/if}
   </aside>
 
