@@ -36,8 +36,13 @@
 		ondndfinalize: (parentId: string, items: TreeNode[]) => void;
 	} = $props();
 
-	let collapsedSet = $derived($state.collapsed);
-	let isCollapsed = $derived(collapsedSet.has(node.id));
+	// Extract the underlying store from the BrowseTreeState plain object
+	// so the $-prefix auto-subscribe sees a real store (not a wrapping
+	// object). `$state.collapsed` is the trap — Svelte interprets `$state`
+	// as auto-subscribe on `state` and throws "subscribe is not a function"
+	// because the BrowseTreeState wrapper isn't itself a store.
+	const collapsedStore = state.collapsed;
+	let isCollapsed = $derived($collapsedStore.has(node.id));
 	let hasChildren = $derived((node.childList?.length ?? 0) > 0);
 	let isTop = $derived(depth === 0);
 
