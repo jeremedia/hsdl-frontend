@@ -178,37 +178,37 @@
 				: 'Select a kind to choose parents.'}
 		</p>
 	{:else}
-		<!-- Selected parent chips -->
-		{#if parentIds.length === 0}
-			<p class="text-[11px] text-text-theme-tertiary italic">
-				No parent selected. {nodeKind === 'sub_hub'
-					? 'A sub-hub must belong to at least one hub.'
-					: 'A collection item must belong to at least one collection group.'}
-			</p>
-		{:else if $chipsQuery.isPending}
-			<p class="text-[11px] text-text-theme-tertiary inline-flex items-center gap-1">
-				<Loader2 class="w-3 h-3 animate-spin" /> Resolving parent names…
-			</p>
-		{:else}
-			<div class="flex flex-wrap gap-1.5">
-				{#each $chipsQuery.data ?? [] as chip (chip.id)}
-					<span
-						class="inline-flex items-center gap-1 rounded border border-border-theme bg-surface-elevated px-2 py-[3px] text-[11px]"
-					>
-						<span class="text-[10px] uppercase tracking-wider text-text-theme-tertiary">{chip.kind}</span>
-						<span class="font-medium">{chip.name}</span>
-						<button
-							type="button"
-							class="ml-1 hover:text-red-600 text-text-theme-tertiary"
-							title="Remove this parent"
-							aria-label="Remove parent: {chip.name}"
-							onclick={() => removeParent(chip.id)}
+		<!-- Selected parent chips. Empty-state hint is moved below the
+		     input (further down) so the picker's first row stays the
+		     same height as the adjacent Position select on the parent
+		     grid — otherwise a missing-parent hint pushes the column
+		     taller and the two fields misalign. -->
+		{#if parentIds.length > 0}
+			{#if $chipsQuery.isPending}
+				<p class="text-[11px] text-text-theme-tertiary inline-flex items-center gap-1">
+					<Loader2 class="w-3 h-3 animate-spin" /> Resolving parent names…
+				</p>
+			{:else}
+				<div class="flex flex-wrap gap-1.5">
+					{#each $chipsQuery.data ?? [] as chip (chip.id)}
+						<span
+							class="inline-flex items-center gap-1 rounded border border-border-theme bg-surface-elevated px-2 py-[3px] text-[11px]"
 						>
-							<X class="w-3 h-3" />
-						</button>
-					</span>
-				{/each}
-			</div>
+							<span class="text-[10px] uppercase tracking-wider text-text-theme-tertiary">{chip.kind}</span>
+							<span class="font-medium">{chip.name}</span>
+							<button
+								type="button"
+								class="ml-1 hover:text-red-600 text-text-theme-tertiary"
+								title="Remove this parent"
+								aria-label="Remove parent: {chip.name}"
+								onclick={() => removeParent(chip.id)}
+							>
+								<X class="w-3 h-3" />
+							</button>
+						</span>
+					{/each}
+				</div>
+			{/if}
 		{/if}
 
 		<!-- Autocomplete input -->
@@ -265,5 +265,16 @@
 				</div>
 			{/if}
 		</div>
+
+		<!-- Empty-state hint goes UNDER the input. Same vertical footprint
+		     as a tiny helper line, doesn't push the picker's first row
+		     taller than the adjacent Position field. -->
+		{#if parentIds.length === 0}
+			<p class="text-[10px] text-amber-600 dark:text-amber-400 leading-snug">
+				{nodeKind === 'sub_hub'
+					? 'A sub-hub must belong to at least one hub.'
+					: 'A collection item must belong to at least one collection group.'}
+			</p>
+		{/if}
 	{/if}
 </div>
