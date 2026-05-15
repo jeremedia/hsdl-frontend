@@ -21,6 +21,7 @@
   import ParentPicker from "$lib/components/ink/ParentPicker.svelte";
   import BrowseTree from "$lib/components/ink/BrowseTree.svelte";
   import ColumnResizer from "$lib/components/ink/ColumnResizer.svelte";
+  import PositionPicker from "$lib/components/ink/PositionPicker.svelte";
 
   const queryClient = useQueryClient();
 
@@ -772,23 +773,21 @@
             />
           </div>
           <div>
-            <label
-              class="block text-xs font-medium text-text-theme-secondary mb-1"
-              for="bn-position">Position</label
-            >
-            <input
-              id="bn-position"
-              type="number"
-              class="input input-compact"
-              value={form.position ?? ""}
-              oninput={(e) => {
-                const v = (e.currentTarget as HTMLInputElement).value;
-                form = {
-                  ...form,
-                  position: v === "" ? null : Number(v),
-                };
+            <label class="block text-xs font-medium text-text-theme-secondary mb-1">Position</label>
+            <PositionPicker
+              nodeId={selectedId}
+              parentId={(form.parent_ids_text
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0)[0]) ?? null}
+              allNodes={$nodesQuery.data ?? []}
+              initialPosition={form.position ?? 0}
+              onreordered={() => {
+                queryClient.invalidateQueries({ queryKey: ["ink", "browse_nodes"] });
+                if (selectedId) {
+                  queryClient.invalidateQueries({ queryKey: ["ink", "browse_node", selectedId] });
+                }
               }}
-              placeholder="0"
             />
           </div>
         </div>

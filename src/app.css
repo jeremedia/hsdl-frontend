@@ -101,6 +101,10 @@
 	--color-surface-elevated: #ffffff;
 	--color-surface-secondary: #ffffff;
 	--color-surface-overlay: #ffffff;
+	/* Input background — slightly off-white in light mode so input
+	   wells read as recessed against a pure-white card. Defined per
+	   theme so we can tune input depth independently of card depth. */
+	--color-input-bg: #f8fafc;
 
 	/* Text Colors - Light Mode */
 	--color-text-primary: var(--color-gray-900);
@@ -156,6 +160,10 @@
 	--color-surface-elevated: #1e293b;
 	--color-surface-secondary: #334155;
 	--color-surface-overlay: #1e293b;
+	/* Halfway between the elevated card (#1e293b) and the previous
+	   too-dark well (#0b1220) — the eye reads recess without the
+	   input swallowing the page-bg contrast (Jeremy 2026-05-15). */
+	--color-input-bg: #152030;
 
 	/* Primary Colors - Inverted for dark mode (lighter blues for headings) */
 	--color-primary-100: #f0f7ff;
@@ -255,6 +263,8 @@
 	--color-surface-elevated: #ffffff;
 	--color-surface-secondary: #f1f5f9;
 	--color-surface-overlay: #ffffff;
+	/* Input well — slightly grey on white card. */
+	--color-input-bg: #f1f5f9;
 
 	/* Text Colors - Light Mode */
 	--color-text-primary: #0f172a;
@@ -304,6 +314,9 @@
 	--color-surface-elevated: #111118;
 	--color-surface-secondary: #1a1a24;
 	--color-surface-overlay: #111118;
+	/* Halfway between the elevated card (#111118) and the previous
+	   too-dark well (#05050a) — softer recess for the developer theme. */
+	--color-input-bg: #0b0b11;
 
 	/* Text Colors - Dark Mode */
 	--color-text-primary: #e2e8f0;
@@ -506,7 +519,12 @@
 		padding: 0.5rem 0.75rem;
 		border-radius: var(--radius-md);
 		border: 1px solid var(--color-border);
-		background-color: var(--color-surface-elevated);
+		/* Recessed well rather than same-as-card. In dark themes this
+		   means inputs are darker than the surrounding card; in light
+		   themes slightly grey on a white card. Either way the input
+		   reads as a distinct field instead of disappearing into the
+		   card surface (Jeremy 2026-05-15 5:09 PM). */
+		background-color: var(--color-input-bg, var(--color-surface-elevated));
 		color: var(--color-text-primary);
 		transition: var(--theme-transition);
 	}
@@ -576,7 +594,10 @@
 		padding: 0.25rem 0.5rem;
 		border-radius: var(--radius-md);
 		border: 1px solid var(--color-border);
-		background-color: var(--color-surface-elevated);
+		/* Same recessed-well treatment as .input — without this the
+		   compact variant overrides .input's bg and disappears into
+		   the card surface in dark mode. */
+		background-color: var(--color-input-bg, var(--color-surface-elevated));
 		color: var(--color-text-primary);
 		font-size: 0.8125rem;
 		transition: var(--theme-transition);
