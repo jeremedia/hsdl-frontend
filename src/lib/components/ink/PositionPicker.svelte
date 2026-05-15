@@ -229,16 +229,24 @@
 					class="flex items-center gap-2 px-2 py-1
 					{selected ? 'bg-surface-secondary font-medium' : ''}"
 				>
-					<span
-						class="w-3 text-[10px] font-bold
-						{selected ? 'text-text-theme-primary' : 'text-text-theme-tertiary'}"
-					>
-						{#if selected}►{:else}&nbsp;{/if}
+					<!-- Marker + position number form one logical "address"
+					     cluster — kept tight (gap-1) so they read as a unit
+					     and don't visually compete with the sibling name. -->
+					<span class="flex items-center gap-1 flex-shrink-0">
+						<span
+							class="w-3 text-[10px] font-bold
+							{selected ? 'text-text-theme-primary' : 'text-text-theme-tertiary'}"
+						>
+							{#if selected}►{:else}&nbsp;{/if}
+						</span>
+						<!-- 1-based index for human readers. The underlying
+						     API position is still 0-based; only the label
+						     shifts (header already shows "N of M" 1-based). -->
+						<span
+							class="tabular-nums w-5 text-right
+							{selected ? 'text-text-theme-primary' : 'text-text-theme-tertiary'}"
+						>{i + 1}</span>
 					</span>
-					<span
-						class="tabular-nums w-5 text-right
-						{selected ? 'text-text-theme-primary' : 'text-text-theme-tertiary'}"
-					>{i}</span>
 					<span
 						class="truncate flex-1 min-w-0
 						{selected ? 'text-text-theme-primary' : 'text-text-theme-secondary'}"
