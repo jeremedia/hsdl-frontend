@@ -15,6 +15,7 @@
   } from "$lib/services/ink-api";
   import { Check, Plus, Trash2, AlertCircle } from "lucide-svelte";
   import FilterPicker from "$lib/components/ink/FilterPicker.svelte";
+  import PlacementPicker from "$lib/components/ink/PlacementPicker.svelte";
 
   const queryClient = useQueryClient();
 
@@ -818,22 +819,21 @@
             {/if}
           </div>
           <div>
-            <label
-              class="block text-xs font-medium text-text-theme-secondary mb-1"
-              for="bn-placement">Placement (JSON)</label
-            >
-            <textarea
-              id="bn-placement"
-              class="input font-mono text-[11px]"
-              rows="6"
-              value={form.placement_text}
-              oninput={(e) =>
+            <label class="block text-xs font-medium text-text-theme-secondary mb-1">Placement</label>
+            <PlacementPicker
+              placement={(() => {
+                try {
+                  return form.placement_text.trim() ? JSON.parse(form.placement_text) : {};
+                } catch {
+                  return {};
+                }
+              })()}
+              onchange={(next) =>
                 (form = {
                   ...form,
-                  placement_text: (e.currentTarget as HTMLTextAreaElement)
-                    .value,
+                  placement_text: JSON.stringify(next, null, 2),
                 })}
-            ></textarea>
+            />
             {#if jsonError.placement}
               <p class="text-[10px] text-red-600 mt-1">{jsonError.placement}</p>
             {/if}
