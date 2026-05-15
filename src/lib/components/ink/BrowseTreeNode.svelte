@@ -8,9 +8,7 @@
 	// BrowseTree level on window listeners and passed in; this
 	// component just needs to render and report.
 
-	import { onMount } from 'svelte';
 	import { Folder, FolderTree, Box, FileText, ChevronRight, ChevronDown } from 'lucide-svelte';
-	import { dndzone, type DndEvent } from 'svelte-dnd-action';
 	import type { InkBrowseNode } from '$lib/services/ink-api';
 	import type { BrowseTreeState } from '$lib/composables/useBrowseTreeState.svelte';
 
@@ -22,9 +20,7 @@
 		state,
 		selectedId,
 		creatingNew,
-		onselect,
-		ondndconsider,
-		ondndfinalize
+		onselect
 	}: {
 		node: TreeNode;
 		depth: number;
@@ -32,8 +28,6 @@
 		selectedId: string | null;
 		creatingNew: boolean;
 		onselect: (id: string) => void;
-		ondndconsider: (parentId: string, items: TreeNode[]) => void;
-		ondndfinalize: (parentId: string, items: TreeNode[]) => void;
 	} = $props();
 
 	// BrowseTreeState is a class with runes-state inside; reading
@@ -75,22 +69,13 @@
 		}
 	}
 
-	// Local working list of children for the dndzone. svelte-dnd-action
-	// mutates this array during drag; we restore on cancel by resyncing
-	// from props when childList changes externally.
-	let dndItems = $state<TreeNode[]>([]);
-	$effect(() => {
-		dndItems = node.childList ?? [];
-	});
-
-	function handleConsider(e: CustomEvent<DndEvent<TreeNode>>) {
-		dndItems = e.detail.items;
-		ondndconsider(node.id, e.detail.items);
-	}
-	function handleFinalize(e: CustomEvent<DndEvent<TreeNode>>) {
-		dndItems = e.detail.items;
-		ondndfinalize(node.id, e.detail.items);
-	}
+	// DnD removed in Phase 1a — children render as a plain nested <ul>.
+	// Drag-and-drop will return in Phase 1.5 once svelte-dnd-action's
+	// Svelte 5.15 compatibility is verified (an initial flush threw
+	// "subscribe is not a function" inside the runtime that didn't
+	// trace back to any store in our code). The /reorder API endpoint
+	// is already live and unused — keyboard-based reorder controls or
+	// a different DnD library can drive it later without backend work.
 </script>
 
 <li>
@@ -163,18 +148,8 @@
 	</div>
 
 	{#if hasChildren && !isCollapsed}
-		<ul
-			class="mt-0.5 ml-3 border-l border-theme pl-2 space-y-0.5"
-			use:dndzone={{
-				items: dndItems,
-				flipDurationMs: 150,
-				type: 'browse-tree',
-				dropTargetStyle: { outline: '1px dashed rgba(59,130,246,0.6)' }
-			}}
-			onconsider={handleConsider}
-			onfinalize={handleFinalize}
-		>
-			{#each dndItems as child (child.id)}
+		<ul class="mt-0.5 ml-3 border-l border-theme pl-2 space-y-0.5">
+			{#each node.childList as child (child.id)}
 				<svelte:self
 					node={child}
 					depth={depth + 1}
@@ -182,8 +157,6 @@
 					{selectedId}
 					{creatingNew}
 					{onselect}
-					{ondndconsider}
-					{ondndfinalize}
 				/>
 			{/each}
 		</ul>
