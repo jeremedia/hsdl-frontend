@@ -16,6 +16,7 @@
   import { Check, Plus, Trash2, AlertCircle } from "lucide-svelte";
   import FilterPicker from "$lib/components/ink/FilterPicker.svelte";
   import PlacementPicker from "$lib/components/ink/PlacementPicker.svelte";
+  import ParentPicker from "$lib/components/ink/ParentPicker.svelte";
 
   const queryClient = useQueryClient();
 
@@ -736,25 +737,20 @@
 
         <div class="grid grid-cols-[1fr_120px] gap-3">
           <div>
-            <label
-              class="block text-xs font-medium text-text-theme-secondary mb-1"
-              for="bn-parents">Parent IDs (comma-separated UUIDs)</label
-            >
-            <input
-              id="bn-parents"
-              type="text"
-              class="input input-compact font-mono text-[11px]"
-              value={form.parent_ids_text}
-              oninput={(e) =>
+            <label class="block text-xs font-medium text-text-theme-secondary mb-1">Parents</label>
+            <ParentPicker
+              parentIds={form.parent_ids_text
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0)}
+              nodeKind={form.kind}
+              nodeId={selectedId}
+              onchange={(next) =>
                 (form = {
                   ...form,
-                  parent_ids_text: (e.currentTarget as HTMLInputElement).value,
+                  parent_ids_text: next.join(", "),
                 })}
-              placeholder="uuid-1, uuid-2"
             />
-            <p class="text-[10px] text-text-theme-tertiary mt-1">
-              First-pass UI. A visual parent picker is coming in a follow-up.
-            </p>
           </div>
           <div>
             <label

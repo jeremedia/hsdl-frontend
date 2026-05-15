@@ -450,6 +450,8 @@ export interface BrowseNodeListParams {
 	kind?: BrowseNodeKind;
 	parent_id?: string;
 	visibility?: BrowseNodeVisibility;
+	q?: string;
+	limit?: number;
 }
 
 export interface BrowseNodePayload {
@@ -755,6 +757,8 @@ class InkApiClient {
 		if (filters.kind) searchParams.set('kind', filters.kind);
 		if (filters.parent_id) searchParams.set('parent_id', filters.parent_id);
 		if (filters.visibility) searchParams.set('visibility', filters.visibility);
+		if (filters.q) searchParams.set('q', filters.q);
+		if (filters.limit) searchParams.set('limit', String(filters.limit));
 		const qs = searchParams.toString();
 		// API returns { browse_nodes: [...] } — unwrap to a plain array for callers.
 		const res = await this.fetch<{ browse_nodes: InkBrowseNode[] } | InkBrowseNode[]>(
