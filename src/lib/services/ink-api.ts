@@ -213,6 +213,7 @@ export interface FeedbackIssue {
 	category: string;
 	priority: string;
 	status: string;
+	assignee: string | null;
 	reporter_review_status: string | null;
 	latest_verdict: FeedbackVerdict | null;
 	reported_by: string | null;
@@ -238,6 +239,7 @@ export interface FeedbackIssueFilters {
 	categories: string[];
 	priorities: string[];
 	reporters: string[];
+	assignees: string[];
 }
 
 export interface FeedbackIssueListParams {
@@ -249,6 +251,7 @@ export interface FeedbackIssueListParams {
 	category?: string;
 	priority?: string;
 	reporter?: string;
+	assignee?: string;
 	q?: string;
 }
 
@@ -530,6 +533,7 @@ class InkApiClient {
 		if (params.category) searchParams.set('category', params.category);
 		if (params.priority) searchParams.set('priority', params.priority);
 		if (params.reporter) searchParams.set('reporter', params.reporter);
+		if (params.assignee) searchParams.set('assignee', params.assignee);
 		if (params.q) searchParams.set('q', params.q);
 		const qs = searchParams.toString();
 		return this.fetch(`/issues/list${qs ? '?' + qs : ''}`);
@@ -540,6 +544,15 @@ class InkApiClient {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ priority })
+		});
+	}
+
+	// assignee: a handle ("jeremy" / "andrew") to assign, or "" / "none" to unassign.
+	async updateIssueAssignee(id: string, assignee: string): Promise<FeedbackIssueExpanded> {
+		return this.fetch(`/issues/${id}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ assignee })
 		});
 	}
 

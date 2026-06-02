@@ -52,6 +52,7 @@
 	let filterCategory = $state(urlParams.get('category') || '');
 	let filterPriority = $state(urlParams.get('priority') || '');
 	let filterReporter = $state(urlParams.get('reporter') || '');
+	let filterAssignee = $state(urlParams.get('assignee') || '');
 	const initialFilterText = urlParams.get('q') || '';
 	let filterText = $state(initialFilterText);
 	let expandedIds = $state<Set<string>>(new Set(
@@ -72,6 +73,7 @@
 		if (filterCategory) params.set('category', filterCategory);
 		if (filterPriority) params.set('priority', filterPriority);
 		if (filterReporter) params.set('reporter', filterReporter);
+		if (filterAssignee) params.set('assignee', filterAssignee);
 		if (qVal) params.set('q', qVal);
 
 		const qs = params.toString();
@@ -83,7 +85,7 @@
 	$effect(() => {
 		// Touch all non-text reactive deps so this fires on their changes
 		const _v = view, _s = listSort, _d = listDir, _p = listPage;
-		const _fs = filterStatus, _fc = filterCategory, _fp = filterPriority, _fr = filterReporter;
+		const _fs = filterStatus, _fc = filterCategory, _fp = filterPriority, _fr = filterReporter, _fa = filterAssignee;
 		saveStorage({ view: _v, sort: _s, dir: _d });
 		syncUrl(debouncedText);
 	});
@@ -102,6 +104,7 @@
 	const categoryStore = writable('');
 	const priorityStore = writable('');
 	const reporterStore = writable('');
+	const assigneeStore = writable('');
 	const textStore = writable('');
 	let textDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -113,6 +116,7 @@
 	$effect(() => { categoryStore.set(filterCategory); });
 	$effect(() => { priorityStore.set(filterPriority); });
 	$effect(() => { reporterStore.set(filterReporter); });
+	$effect(() => { assigneeStore.set(filterAssignee); });
 	// Debounce text search — 300ms delay prevents stealing focus and excess API calls
 	$effect(() => {
 		const val = filterText;
@@ -124,12 +128,13 @@
 	});
 
 	const listQueryOptions = derived(
-		[viewStore, sortStore, dirStore, pageStore, statusStore, categoryStore, priorityStore, reporterStore, textStore],
-		([$v, $s, $d, $p, $st, $c, $pr, $r, $q]) => {
+		[viewStore, sortStore, dirStore, pageStore, statusStore, categoryStore, priorityStore, reporterStore, assigneeStore, textStore],
+		([$v, $s, $d, $p, $st, $c, $pr, $r, $a, $q]) => {
 			const params: FeedbackIssueListParams = {
 				sort: $s, direction: $d, page: $p, per_page: 50,
 				status: $st || undefined, category: $c || undefined,
 				priority: $pr || undefined, reporter: $r || undefined,
+				assignee: $a || undefined,
 				q: $q || undefined
 			};
 			return {
@@ -146,6 +151,16 @@
 	const priorityMutation = createMutation({
 		mutationFn: ({ id, priority }: { id: string; priority: string }) =>
 			inkApi.updateIssuePriority(id, priority),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['ink', 'feedback-list'] });
+			queryClient.invalidateQueries({ queryKey: ['ink', 'feedback'] });
+		}
+	});
+
+	// ── Assignee mutation ── (empty string = unassign; DMs the assignee server-side)
+	const assigneeMutation = createMutation({
+		mutationFn: ({ id, assignee }: { id: string; assignee: string }) =>
+			inkApi.updateIssueAssignee(id, assignee),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['ink', 'feedback-list'] });
 			queryClient.invalidateQueries({ queryKey: ['ink', 'feedback'] });
@@ -314,6 +329,7 @@
 		filterCategory = filters.category || '';
 		filterReporter = filters.reporter || '';
 		filterPriority = '';
+		filterAssignee = '';
 		filterText = '';
 		listPage = 1;
 		view = 'list';
@@ -340,6 +356,7 @@
 		filterCategory = '';
 		filterPriority = '';
 		filterReporter = '';
+		filterAssignee = '';
 		filterText = '';
 		filterVerdict = '';
 		listPage = 1;
@@ -354,7 +371,7 @@
 	let filterVerdict = $state<VerdictKey | ''>('');
 
 	let hasActiveFilters = $derived(
-		filterStatus !== '' || filterCategory !== '' || filterPriority !== '' || filterReporter !== '' || filterText !== '' || filterVerdict !== ''
+		filterStatus !== '' || filterCategory !== '' || filterPriority !== '' || filterReporter !== '' || filterAssignee !== '' || filterText !== '' || filterVerdict !== ''
 	);
 
 	// Verdict counts across the current (server-filtered) result page
@@ -594,6 +611,14 @@
 					{/each}
 				{/if}
 			</select>
+			<select bind:value={filterAssignee} onchange={() => listPage = 1} class={selectClass}>
+				<option value="">All assignees</option>
+				{#if $listQuery.data}
+					{#each $listQuery.data.filters.assignees as a}
+						<option value={a}>{a}</option>
+					{/each}
+				{/if}
+			</select>
 			{#if hasActiveFilters}
 				<button onclick={clearFilters} class="text-xs text-interactive hover:underline font-medium">Clear</button>
 			{/if}
@@ -662,8 +687,8 @@
 			<!-- Table -->
 			<div class="bg-surface-elevated rounded-lg border border-theme overflow-hidden overflow-x-auto">
 				<!-- Header row —
-				     Grid: [rail 4px][verdict 86px][short-id 72px][title 1fr][status 90px][category 110px][priority 80px][reporter 130px][age 44px] -->
-				<div class="grid grid-cols-[4px_86px_72px_1fr_90px_110px_80px_130px_44px] gap-2 px-3 py-2 border-b border-theme bg-surface-secondary text-[11px] font-medium text-text-theme-secondary uppercase tracking-wider min-w-[900px]">
+				     Grid: [rail 4px][verdict 86px][short-id 72px][title 1fr][status 90px][category 110px][priority 80px][reporter 130px][assignee 110px][age 44px] -->
+				<div class="grid grid-cols-[4px_86px_72px_1fr_90px_110px_80px_130px_110px_44px] gap-2 px-3 py-2 border-b border-theme bg-surface-secondary text-[11px] font-medium text-text-theme-secondary uppercase tracking-wider min-w-[1010px]">
 					<span aria-hidden="true"></span>
 					<span class="pl-4">Review</span>
 					<span>ID</span>
@@ -672,6 +697,7 @@
 					<button class="text-left hover:text-text-theme-primary transition-colors" onclick={() => toggleSort('category')}>Category{sortIndicator('category')}</button>
 					<button class="text-left hover:text-text-theme-primary transition-colors" onclick={() => toggleSort('priority')}>Priority{sortIndicator('priority')}</button>
 					<button class="text-left hover:text-text-theme-primary transition-colors" onclick={() => toggleSort('reported_by')}>Reporter{sortIndicator('reported_by')}</button>
+					<span>Assignee</span>
 					<button class="text-left hover:text-text-theme-primary transition-colors" onclick={() => toggleSort('created_at')}>Age{sortIndicator('created_at')}</button>
 				</div>
 
@@ -693,12 +719,12 @@
 						{@const isExpanded = expandedIds.has(issue.full_id)}
 						{@const vs = verdictStyle(issue.latest_verdict)}
 						<!-- Summary row —
-						     Grid columns match header: [rail 4px][verdict 86px][short-id 72px][title 1fr][status 90px][category 110px][priority 80px][reporter 130px][age 44px].
+						     Grid columns match header: [rail 4px][verdict 86px][short-id 72px][title 1fr][status 90px][category 110px][priority 80px][reporter 130px][assignee 110px][age 44px].
 						     The 4px left rail carries verdict color into the row so a scanning reviewer sees
 						     green/red/amber stripes without reading the badge. -->
 						<div class={isExpanded ? 'bg-surface-secondary/50' : ''}>
 							<button
-								class="w-full grid grid-cols-[4px_86px_72px_1fr_90px_110px_80px_130px_44px] gap-2 pr-3 py-2 text-left hover:bg-surface-secondary transition-colors items-center group min-w-[900px]"
+								class="w-full grid grid-cols-[4px_86px_72px_1fr_90px_110px_80px_130px_110px_44px] gap-2 pr-3 py-2 text-left hover:bg-surface-secondary transition-colors items-center group min-w-[1010px]"
 								onclick={() => toggleExpanded(issue.full_id)}
 							>
 								<!-- Verdict rail (full-height 4px stripe colored by verdict; neutral when unreviewed) -->
@@ -753,6 +779,27 @@
 									</select>
 								</div>
 								<span class="text-xs text-text-theme-tertiary truncate">{issue.reported_by || '—'}</span>
+								<!-- Assignee (click-to-edit; empty = unassign; server DMs the assignee) -->
+								<div>
+									<!-- svelte-ignore a11y_no_static_element_interactions -->
+									<select
+										value={issue.assignee || ''}
+										onchange={(e) => {
+											const target = e.target as HTMLSelectElement;
+											$assigneeMutation.mutate({ id: issue.full_id, assignee: target.value });
+										}}
+										onclick={(e) => e.stopPropagation()}
+										class="text-xs bg-transparent border border-transparent hover:border-theme rounded px-1 py-0.5 cursor-pointer transition-colors w-full
+											{issue.assignee ? 'text-text-theme-secondary font-medium' : 'text-text-theme-tertiary'}"
+									>
+										<option value="">— unassigned</option>
+										{#if $listQuery.data}
+											{#each $listQuery.data.filters.assignees as a}
+												<option value={a}>{a}</option>
+											{/each}
+										{/if}
+									</select>
+								</div>
 								<span class="text-xs text-text-theme-tertiary tabular-nums">{issue.age_days}d</span>
 							</button>
 
