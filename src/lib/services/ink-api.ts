@@ -101,6 +101,11 @@ export interface InkUser {
 	name: string;
 	role: string | null;
 	created_at: string;
+	// Verification queue: the Slack identity this account's reported issues are
+	// filed under (null if not a known reporter), and how many fixes are live
+	// and awaiting their sign-off (powers the nav badge).
+	slack_user_id?: string | null;
+	verify_pending?: number;
 }
 
 export interface PaginatedResponse<T> {
@@ -222,6 +227,21 @@ export interface FeedbackIssue {
 	age_days: number;
 }
 
+// Signed-URL image payload as returned by the Rails issue_images/notes_with_images
+// helpers. Shape matches ImageGallery's expected props.
+export interface IssueImage {
+	id: number | string;
+	filename: string;
+	content_type?: string;
+	byte_size?: number;
+	// number | undefined to match ImageGallery's GalleryImage contract. The
+	// Rails serializer may send null when blob metadata lacks dimensions;
+	// ImageGallery tolerates that via `img.width || fallback`.
+	width?: number;
+	height?: number;
+	url: string;
+}
+
 export interface FeedbackIssueExpanded extends FeedbackIssue {
 	description: string | null;
 	search_query: string | null;
@@ -231,7 +251,30 @@ export interface FeedbackIssueExpanded extends FeedbackIssue {
 	resolved_at: string | null;
 	fixed_in_version: string | null;
 	review_steps: string | null;
-	notes: Array<{ text: string; author: string; timestamp: string; verdict?: FeedbackVerdict }>;
+	notes: Array<{
+		text: string;
+		author: string;
+		timestamp: string;
+		verdict?: FeedbackVerdict;
+		images?: IssueImage[];
+	}>;
+	images?: IssueImage[];
+}
+
+// A row in the reporter verification queue: the full expanded issue plus the
+// queue-specific fields the verify UI renders.
+export interface VerifyQueueItem extends FeedbackIssueExpanded {
+	is_active: boolean; // the one Slack is currently waiting on (DM out)
+	queue_position: number | null; // 1-based rank in the pending list
+	test_url: string | null; // where to go verify the fix
+}
+
+export interface VerifyQueueResponse {
+	linked: boolean; // false → this account isn't a known reporter
+	reporter?: { name: string; slack_user_id: string };
+	total?: number;
+	results: VerifyQueueItem[];
+	recent: VerifyQueueItem[]; // confirmed/rejected in the last 14 days
 }
 
 export interface FeedbackIssueFilters {
@@ -508,6 +551,30 @@ class InkApiClient {
 		return response.json();
 	}
 
+	// Multipart POST (file uploads). Deliberately omits the Content-Type header
+	// so the browser sets multipart/form-data with the correct boundary — if we
+	// set it ourselves the boundary is lost and Rails can't parse the parts.
+	// On a non-2xx the server may return a JSON { error } body; surface it.
+	private async fetchMultipart<T>(endpoint: string, body: FormData): Promise<T> {
+		const url = `${this.baseUrl}${endpoint}`;
+		const response = await fetch(url, { method: 'POST', credentials: 'include', body });
+
+		if (!response.ok) {
+			if (response.status === 401) throw new InkApiError(401, 'NOT_AUTHENTICATED');
+			if (response.status === 403) throw new InkApiError(403, 'FORBIDDEN');
+			let detail = `API error: ${response.status} ${response.statusText}`;
+			try {
+				const data = await response.json();
+				if (data?.error) detail = data.error;
+			} catch {
+				/* non-JSON body — keep the default */
+			}
+			throw new InkApiError(response.status, detail);
+		}
+
+		return response.json();
+	}
+
 	// Auth
 	async getMe(): Promise<InkUser> {
 		return this.fetch('/auth/me');
@@ -554,6 +621,36 @@ class InkApiClient {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ assignee })
 		});
+	}
+
+	// ── Reporter verification queue ──────────────────────────────────────
+	// The web complement to the Slack DM review loop. Scoped server-side to the
+	// logged-in user's own reported issues via current_reporter_slack_id.
+
+	async getVerifyQueue(): Promise<VerifyQueueResponse> {
+		return this.fetch('/issues/verify_queue');
+	}
+
+	// Accept the fix — confirms the resolution and releases the reporter's next
+	// queued review (Slack DM) if one is waiting.
+	async confirmIssue(id: string): Promise<VerifyQueueItem> {
+		return this.fetch(`/issues/${id}/confirm`, { method: 'POST' });
+	}
+
+	// Reject the fix (reopens the issue, notifies team + assignee). reason is
+	// required; files are optional screenshot attachments. Sent as multipart so
+	// the files ride along — the first multipart call in this client.
+	async rejectIssue(id: string, reason: string, files?: File[]): Promise<VerifyQueueItem> {
+		const form = new FormData();
+		form.append('reason', reason);
+		if (files) for (const f of files) form.append('images[]', f);
+		return this.fetchMultipart(`/issues/${id}/reject`, form);
+	}
+
+	// "Send myself the verify message" — re-posts this item's review DM and makes
+	// it the one Slack is waiting on.
+	async resendReviewDm(id: string): Promise<{ ok: boolean }> {
+		return this.fetch(`/issues/${id}/resend_review_dm`, { method: 'POST' });
 	}
 
 	// Enrichment

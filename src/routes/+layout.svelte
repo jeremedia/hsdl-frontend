@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { inkApi } from '$lib/services/ink-api';
-	import { LayoutDashboard, FileText, Search, Info, Menu, X, Keyboard, Sun, Moon, Monitor, Zap, BarChart3, SlidersHorizontal, MessageSquare, FolderTree } from 'lucide-svelte';
+	import { LayoutDashboard, FileText, Search, Info, Menu, X, Keyboard, Sun, Moon, Monitor, Zap, BarChart3, SlidersHorizontal, MessageSquare, FolderTree, CheckCircle2 } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { initTheme, destroyTheme, setColorMode, getThemeState, type ColorMode } from '$lib/stores/theme.svelte';
 	import '../app.css';
@@ -34,7 +34,7 @@
 		setColorMode(modeOrder[(idx + 1) % modeOrder.length]);
 	}
 
-	let user = $state<{ id: string; name: string; email: string; role: string | null } | null>(null);
+	let user = $state<{ id: string; name: string; email: string; role: string | null; verify_pending?: number } | null>(null);
 	let authChecked = $state(false);
 	let accessDenied = $state(false);
 	let mobileMenuOpen = $state(false);
@@ -79,12 +79,16 @@
 		{ href: `${base}/eval`, label: 'Eval', icon: BarChart3 },
 		{ href: `${base}/lab`, label: 'Lab', icon: SlidersHorizontal },
 		{ href: `${base}/feedback`, label: 'Feedback', icon: MessageSquare },
+		{ href: `${base}/feedback/verify`, label: 'Verify', icon: CheckCircle2 },
 		{ href: `${base}/overview`, label: 'Overview', icon: Info }
 	];
 
 	function isActive(href: string): boolean {
 		if (href === `${base}/`) return currentPath === `${base}` || currentPath === `${base}/`;
-		return currentPath.startsWith(href);
+		if (!currentPath.startsWith(href)) return false;
+		// A more specific sibling wins, so /feedback doesn't also light up on
+		// /feedback/verify (and vice versa).
+		return !navItems.some((o) => o.href !== href && o.href.startsWith(href) && currentPath.startsWith(o.href));
 	}
 
 	function handleGlobalKeydown(e: KeyboardEvent) {
@@ -151,6 +155,9 @@
 						>
 							<Icon size={14} />
 							{item.label}
+							{#if item.label === 'Verify' && (user?.verify_pending ?? 0) > 0}
+								<span class="text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full bg-interactive text-white tabular-nums">{user?.verify_pending}</span>
+							{/if}
 						</a>
 					{/each}
 				</nav>
@@ -216,6 +223,9 @@
 						>
 							<Icon size={16} />
 							{item.label}
+							{#if item.label === 'Verify' && (user?.verify_pending ?? 0) > 0}
+								<span class="text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full bg-interactive text-white tabular-nums">{user?.verify_pending}</span>
+							{/if}
 						</a>
 					{/each}
 					{#if appVersion}

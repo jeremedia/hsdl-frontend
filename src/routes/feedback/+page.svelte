@@ -2,7 +2,7 @@
 	import { createQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { writable, derived } from 'svelte/store';
 	import { inkApi, type FeedbackDashboardData, type FeedbackIssueExpanded, type FeedbackIssueListParams } from '$lib/services/ink-api';
-	import { MessageSquare, AlertTriangle, Bug, Lightbulb, Layout, FileText, Search, Gauge, CircleDot, BarChart3, List, ChevronDown, ChevronRight, ExternalLink, Image } from 'lucide-svelte';
+	import { MessageSquare, AlertTriangle, Bug, Lightbulb, Layout, FileText, Search, Gauge, CircleDot, BarChart3, List, ChevronDown, ChevronRight, ExternalLink, Image, CheckCircle2 } from 'lucide-svelte';
 	import ImageGallery from '$lib/components/ImageGallery.svelte';
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
@@ -432,6 +432,13 @@
 				Issues
 			</button>
 		</div>
+		<a
+			href="{base}/feedback/verify"
+			class="ml-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md border border-interactive/40 bg-interactive/5 hover:bg-interactive/10 text-interactive transition-colors"
+			title="The reporter-facing verification queue — accept or reject resolved fixes"
+		>
+			<CheckCircle2 size={13} /> Verify Fixes
+		</a>
 	</div>
 
 	<!-- ═══════════ DASHBOARD VIEW ═══════════ -->
