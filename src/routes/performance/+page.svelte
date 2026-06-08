@@ -5,7 +5,7 @@
   import { createQuery } from "@tanstack/svelte-query";
   import { derived, writable } from "svelte/store";
   import { inkApi, type SearchPerfRange } from "$lib/services/ink-api";
-  import { Activity, Timer, Gauge, SearchX, Layers } from "lucide-svelte";
+  import { Activity, Timer, Gauge, SearchX, Layers, X } from "lucide-svelte";
 
   // Latency target reference line (ms). The fast numbers reading "well under
   // target" is the point — a deliberate contrast with the slow legacy HSDL.
@@ -18,6 +18,7 @@
   ];
 
   let range = $state<SearchPerfRange>("7d");
+  let showHelp = $state(false);
 
   // TanStack Query consumes a store, not a rune — bridge range through writable.
   const rangeStore = writable<SearchPerfRange>("7d");
@@ -84,12 +85,22 @@
   );
 </script>
 
+<svelte:window onkeydown={(e) => { if (e.key === "Escape") showHelp = false; }} />
+
 <div class="p-4 sm:p-6 max-w-6xl mx-auto">
   <!-- Header + range selector -->
   <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
     <div class="flex items-center gap-2">
       <Activity size={22} class="text-interactive" />
       <h1 class="text-xl font-bold text-text-theme-primary">Search Performance</h1>
+      <button
+        onclick={() => (showHelp = true)}
+        aria-label="How to read this page"
+        title="How to read this page"
+        class="w-5 h-5 inline-flex items-center justify-center rounded-full border border-theme text-text-theme-tertiary hover:text-text-theme-primary hover:border-interactive text-xs font-semibold leading-none transition-colors"
+      >
+        ?
+      </button>
     </div>
     <div class="flex items-center gap-1 bg-surface-secondary rounded-lg p-1">
       {#each RANGES as r}
@@ -306,6 +317,93 @@
         {:else}
           <div class="p-4 text-sm text-text-theme-tertiary">No zero-result searches in this window. 🎉</div>
         {/if}
+      </div>
+    </div>
+  {/if}
+
+  <!-- How-to-read overlay -->
+  {#if showHelp}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+      class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+      onclick={() => (showHelp = false)}
+      onkeydown={() => {}}
+    >
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="bg-surface-elevated rounded-lg shadow-xl border border-theme max-w-lg w-full max-h-[80vh] overflow-y-auto p-5"
+        onclick={(e) => e.stopPropagation()}
+        onkeydown={() => {}}
+      >
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold text-text-theme-primary">How to read this page</h2>
+          <button onclick={() => (showHelp = false)} class="text-text-theme-tertiary hover:text-text-theme-primary" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
+
+        <p class="text-xs text-text-theme-secondary mb-4">
+          Every search run on HSDL is recorded. This page summarizes real traffic
+          for the selected window (24 hours, 7 days, or 30 days) — there's no
+          sampling, it's every search.
+        </p>
+
+        <div class="space-y-3 text-xs leading-relaxed">
+          <div>
+            <div class="font-semibold text-text-theme-primary mb-0.5">Latency — p50 / p95 / p99</div>
+            <p class="text-text-theme-secondary">
+              How long the <em>server</em> took to run the search, in milliseconds
+              (lower is better). These are <strong>percentiles</strong>, not averages:
+              <strong>p50</strong> is the median — half of searches finished faster.
+              <strong>p95</strong> means 95% finished faster (the occasional slow one
+              most users still hit sometimes). <strong>p99</strong> is the worst 1%.
+              The dashed line on the trend chart is our {TARGET_MS}ms target.
+            </p>
+          </div>
+          <div>
+            <div class="font-semibold text-text-theme-primary mb-0.5">Zero-result rate</div>
+            <p class="text-text-theme-secondary">
+              Share of searches (that had a query) returning <strong>no results</strong> —
+              the clearest signal of a relevance gap. The <em>Zero-result queries</em>
+              table lists exactly what people searched that found nothing, so we can fix it.
+            </p>
+          </div>
+          <div>
+            <div class="font-semibold text-text-theme-primary mb-0.5">Avg results</div>
+            <p class="text-text-theme-secondary">Average number of matching documents per search.</p>
+          </div>
+          <div>
+            <div class="font-semibold text-text-theme-primary mb-0.5">Phase split — keyword / semantic / hybridize</div>
+            <p class="text-text-theme-secondary">
+              A hybrid search runs two retrievals in parallel —
+              <strong>keyword</strong> (exact word matches) and <strong>semantic</strong>
+              (meaning, via embeddings) — then <strong>hybridizes</strong>: fuses the two
+              lists, applies ranking boosts, and collapses duplicate editions. The bars
+              show where the server spends its time.
+            </p>
+          </div>
+          <div>
+            <div class="font-semibold text-text-theme-primary mb-0.5">By search mode</div>
+            <p class="text-text-theme-secondary">
+              <strong>Hybrid</strong> (the default), <strong>Keyword</strong> only,
+              <strong>Semantic</strong> only, or <strong>Browse</strong> (no query — just
+              filters or the full collection).
+            </p>
+          </div>
+          <div>
+            <div class="font-semibold text-text-theme-primary mb-0.5">The tables</div>
+            <p class="text-text-theme-secondary">
+              <strong>Slowest searches</strong> are optimization targets.
+              <strong>Top queries</strong> are what people look for most.
+              <strong>Zero-result queries</strong> are the relevance gaps to close.
+            </p>
+          </div>
+          <p class="text-text-theme-tertiary border-t border-theme pt-3">
+            Note: latency here is server compute time only — it excludes the network
+            and browser time the user also waits, so what they experience is a bit
+            higher.
+          </p>
+        </div>
       </div>
     </div>
   {/if}
