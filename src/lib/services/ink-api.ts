@@ -658,6 +658,11 @@ class InkApiClient {
 		return this.fetch('/enrichment');
 	}
 
+	// Search performance dashboard (real-traffic telemetry; SearchMetrics)
+	async getSearchPerformance(range: SearchPerfRange = '7d'): Promise<SearchPerformance> {
+		return this.fetch(`/search_performance?range=${range}`);
+	}
+
 	// Documents
 	async getDocuments(params: DocumentSearchParams = {}): Promise<PaginatedResponse<InkDocument>> {
 		const searchParams = new URLSearchParams();
@@ -929,6 +934,48 @@ class InkApiClient {
 		});
 		if (!response.ok) throw new InkApiError(response.status, `Delete failed: ${response.statusText}`);
 	}
+}
+
+// Search performance dashboard types (SearchMetrics#dashboard)
+export type SearchPerfRange = '24h' | '7d' | '30d';
+export interface SearchPerfSummary {
+	total_searches: number;
+	query_searches: number;
+	p50_ms: number | null;
+	p95_ms: number | null;
+	p99_ms: number | null;
+	avg_keyword_ms: number | null;
+	avg_semantic_ms: number | null;
+	avg_hybridize_ms: number | null;
+	avg_results: number | null;
+	zero_result_rate: number;
+	zero_result_count: number;
+}
+export interface SearchPerfBucket {
+	bucket: string;
+	p50_ms: number | null;
+	p95_ms: number | null;
+	count: number;
+}
+export interface SearchPerfMode { mode: string; count: number }
+export interface SearchPerfSlowest {
+	query: string | null;
+	mode: string;
+	elapsed_ms: number | null;
+	total_count: number;
+	created_at: string;
+}
+export interface SearchPerfTopQuery { query: string; count: number; avg_ms: number | null; zero_count: number }
+export interface SearchPerfZeroQuery { query: string; count: number; last_seen: string }
+export interface SearchPerformance {
+	range: string;
+	since: string;
+	summary: SearchPerfSummary;
+	latency_series: SearchPerfBucket[];
+	mode_breakdown: SearchPerfMode[];
+	slowest: SearchPerfSlowest[];
+	top_queries: SearchPerfTopQuery[];
+	zero_result_queries: SearchPerfZeroQuery[];
 }
 
 export const inkApi = new InkApiClient(INK_BASE);

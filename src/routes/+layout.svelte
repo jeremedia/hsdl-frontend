@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { inkApi } from '$lib/services/ink-api';
-	import { LayoutDashboard, FileText, Search, Info, Menu, X, Keyboard, Sun, Moon, Monitor, Zap, BarChart3, SlidersHorizontal, MessageSquare, FolderTree, CheckCircle2 } from 'lucide-svelte';
+	import { LayoutDashboard, FileText, Search, Info, Menu, X, Keyboard, Sun, Moon, Monitor, Zap, BarChart3, SlidersHorizontal, MessageSquare, FolderTree, CheckCircle2, Activity } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { initTheme, destroyTheme, setColorMode, getThemeState, type ColorMode } from '$lib/stores/theme.svelte';
 	import '../app.css';
@@ -77,6 +77,7 @@
 		{ href: `${base}/browse`, label: 'Browse', icon: FolderTree },
 		{ href: `${base}/enrichment`, label: 'Enrichment', icon: Zap },
 		{ href: `${base}/eval`, label: 'Eval', icon: BarChart3 },
+		{ href: `${base}/performance`, label: 'Performance', icon: Activity },
 		{ href: `${base}/lab`, label: 'Lab', icon: SlidersHorizontal },
 		{ href: `${base}/feedback`, label: 'Feedback', icon: MessageSquare },
 		{ href: `${base}/feedback/verify`, label: 'Verify', icon: CheckCircle2 },
