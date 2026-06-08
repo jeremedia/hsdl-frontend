@@ -759,12 +759,22 @@
         <ParameterToggle
           label="Series Collapse"
           paramKey="series_collapse_enabled"
-          value={(hp("series_collapse_enabled") as boolean) ?? true}
-          description="Group editions of the same series, showing only the newest."
-          detailedDescription="When enabled, multiple editions of the same publication series are collapsed into a single result. 4,758 series cover 65K documents (20% of the collection). The collapse happens after RRF scoring."
+          value={(hp("series_collapse_enabled") as boolean) ?? false}
+          description="Collapse all docs sharing a Series vocab term to one result. OFF by default."
+          detailedDescription="When enabled, every document tagged with the same Series term collapses to a single representative. The Series field is overloaded with giant topical lists ('COVID 19 Resources' = 12K docs, 'MMWR' = 1.4K; 456 series have >20 members), so this hides thousands of distinct docs and makes per-term facet counts undercount the result list (issues ccad6dc6 / fb88e583). Kept OFF by default — use Edition Collapse for true reissues."
           disabled={config.locked}
           onchange={(v) =>
             (dirtyHybrid = { ...dirtyHybrid, series_collapse_enabled: v })}
+        />
+        <ParameterToggle
+          label="Edition Collapse"
+          paramKey="edition_collapse_enabled"
+          value={(hp("edition_collapse_enabled") as boolean) ?? true}
+          description="Fold reissued editions (same title, differing only in a trailing [date] bracket) to the newest."
+          detailedDescription="Groups documents whose titles are identical except for a trailing bracketed edition marker ('[Updated Feb 2003]', '[June 15, 2020]') and keeps the newest by publish date. True editions share author and subject, so facet counts stay consistent with the result list. ON by default; gated independently of Series Collapse."
+          disabled={config.locked}
+          onchange={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, edition_collapse_enabled: v })}
         />
         <ParameterSlider
           label="Quality Banner Threshold"
