@@ -68,6 +68,11 @@ export interface SearchConfigDetail extends SearchConfigSummary {
 		recency_boost_weight: number;
 		recency_decay_rate: number;
 		fetch_size_multiplier: number;
+		constant_pool_enabled?: boolean;
+		candidate_pool_size?: number;
+		hybrid_counts_v2_enabled?: boolean;
+		creator_surname_match_enabled?: boolean;
+		creator_surname_max_authorities?: number;
 		series_collapse_enabled: boolean;
 		bm25_enabled?: boolean;
 		lists_boost_weight: number;

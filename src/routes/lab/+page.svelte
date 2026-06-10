@@ -732,15 +732,73 @@
           disabled={config.locked}
           oninput={(v) => (dirtyHybrid = { ...dirtyHybrid, rrf_k: v })}
         />
+        <ParameterToggle
+          label="Constant Candidate Pool"
+          paramKey="constant_pool_enabled"
+          value={(hp("constant_pool_enabled") as boolean) ?? true}
+          description="Rank against a fixed-size candidate pool regardless of page size. Makes ranking and counts page-size-invariant."
+          detailedDescription="When ON, every request ranks against the same Candidate Pool Size below, so changing 'results per page' can never change the ordering or the totals (issue a0899a1d), and Lab preview ranks identically to the public site. When OFF, the legacy behavior applies: pool = per_page x Legacy Candidate Depth, which made ranking a function of page size."
+          disabled={config.locked}
+          onchange={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, constant_pool_enabled: v })}
+        />
         <ParameterSlider
-          label="Candidate Depth"
+          label="Candidate Pool Size"
+          paramKey="candidate_pool_size"
+          value={(hp("candidate_pool_size") as number) ?? 400}
+          min={50}
+          max={1000}
+          step={25}
+          description="Fixed number of candidates each search method contributes for re-ranking (when Constant Candidate Pool is ON)."
+          detailedDescription="Both the keyword and semantic legs contribute up to this many candidates to RRF fusion. 400 ≈ 2x the old per_page=25 norm; hydration at 400 measured ~147ms cold. Raise for deeper recall, lower for speed."
+          scaleLabels={["50 (fast)", "400 (default)", "1000 (deep)"]}
+          disabled={config.locked}
+          oninput={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, candidate_pool_size: v })}
+        />
+        <ParameterToggle
+          label="Coherent Counts (v2)"
+          paramKey="hybrid_counts_v2_enabled"
+          value={(hp("hybrid_counts_v2_enabled") as boolean) ?? true}
+          description="Total = keyword + semantic (under similarity threshold) + boost extras — the same at every page size, and the header arithmetic adds up."
+          detailedDescription="When ON: (1) the hybrid semantic leg only admits documents under the Semantic Similarity Threshold, so dissimilar vector matches stop polluting results and counts; (2) total_count is the sum of three disjoint buckets (keyword matches + semantic-only matches + boost-added docs), identical across modes and page sizes. Fixes the '0 semantic / 14 keyword / 77 hybrid' contradiction (issues 77822a25 / 3f0e9390). When OFF, the legacy max(keyword, ranked-pool) total applies."
+          disabled={config.locked}
+          onchange={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, hybrid_counts_v2_enabled: v })}
+        />
+        <ParameterToggle
+          label="Surname Author Match"
+          paramKey="creator_surname_match_enabled"
+          value={(hp("creator_surname_match_enabled") as boolean) ?? true}
+          description="A 1–2 word query matching only a few author authorities surfaces those authors' documents."
+          detailedDescription="Author names live only in the Creator vocabulary — not in titles/descriptions — so a bare surname search ('marlatt') could never find authored works whose text omits the name (issue 3f0e9390). When the query token matches at most Surname Authority Cap distinct Creator authorities, their documents join the candidate pool via the Author Name Boost. Common surnames ('smith') exceed the cap and are unaffected — the autosuggest picker handles those."
+          disabled={config.locked}
+          onchange={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, creator_surname_match_enabled: v })}
+        />
+        <ParameterSlider
+          label="Surname Authority Cap"
+          paramKey="creator_surname_max_authorities"
+          value={(hp("creator_surname_max_authorities") as number) ?? 5}
+          min={1}
+          max={25}
+          step={1}
+          description="Maximum distinct author authorities a bare-surname query may match before the surname signal stays quiet."
+          detailedDescription="At 5, 'marlatt' (1 authority) fires while 'smith' (hundreds) stays inert. Raise if librarians report mid-frequency surnames ('garza', ~10 authorities) should still match; watch the surname_creator log lines for a week before tuning."
+          scaleLabels={["1 (strict)", "5 (default)", "25 (loose)"]}
+          disabled={config.locked}
+          oninput={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, creator_surname_max_authorities: v })}
+        />
+        <ParameterSlider
+          label="Legacy Candidate Depth"
           paramKey="fetch_size_multiplier"
           value={(hp("fetch_size_multiplier") as number) ?? 3}
           min={1}
           max={10}
           step={1}
-          description="How many candidates to consider per page of results. Higher = more thorough but slightly slower."
-          detailedDescription="For a page of 15 results, the system fetches (15 x multiplier) candidates from each search method, then re-ranks the combined pool. Diminishing returns above 5x."
+          description="LEGACY — used only when Constant Candidate Pool is OFF: candidates per page of results."
+          detailedDescription="The pre-2026-06 pool sizing: for a page of 15 results, fetch (15 x multiplier) candidates from each search method. Coupling the pool to page size made ranking change with per_page (issue a0899a1d). Kept as the instant-rollback path; scheduled for removal."
           scaleLabels={["1x (fast)", "3x (default)", "10x (thorough)"]}
           disabled={config.locked}
           formatValue={(v) => `${v}x`}
