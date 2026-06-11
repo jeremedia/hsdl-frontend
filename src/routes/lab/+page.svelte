@@ -779,13 +779,13 @@
         <ParameterSlider
           label="Surname Authority Cap"
           paramKey="creator_surname_max_authorities"
-          value={(hp("creator_surname_max_authorities") as number) ?? 5}
+          value={(hp("creator_surname_max_authorities") as number) ?? 20}
           min={1}
           max={25}
           step={1}
           description="Maximum distinct author authorities a bare-surname query may match before the surname signal stays quiet."
-          detailedDescription="At 5, 'marlatt' (1 authority) fires while 'smith' (hundreds) stays inert. Raise if librarians report mid-frequency surnames ('garza', ~10 authorities) should still match; watch the surname_creator log lines for a week before tuning."
-          scaleLabels={["1 (strict)", "5 (default)", "25 (loose)"]}
+          detailedDescription="At 20, 'marlatt' (1 authority) and 'garza' (19) fire while 'house' (30), 'martinez' (92), and 'smith' (300+) stay inert — measured break in the authority distribution. Watch the surname_creator log lines before tuning."
+          scaleLabels={["1 (strict)", "20 (default)", "25 (loose)"]}
           disabled={config.locked}
           oninput={(v) =>
             (dirtyHybrid = { ...dirtyHybrid, creator_surname_max_authorities: v })}
