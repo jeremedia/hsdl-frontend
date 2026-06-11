@@ -105,6 +105,9 @@ export interface InkUser {
 	email: string;
 	name: string;
 	role: string | null;
+	// Admin unlocks the verify-queue reporter picker (same User#admin? as the
+	// Rails /sidekiq gate).
+	admin?: boolean;
 	created_at: string;
 	// Verification queue: the Slack identity this account's reported issues are
 	// filed under (null if not a known reporter), and how many fixes are live
@@ -274,9 +277,20 @@ export interface VerifyQueueItem extends FeedbackIssueExpanded {
 	test_url: string | null; // where to go verify the fix
 }
 
+// One row of the admin queue picker: a reporter identity plus how many fixes
+// are live and awaiting their sign-off. Only present in admin responses.
+export interface VerifyReporterOption {
+	slack_user_id: string;
+	name: string;
+	pending: number;
+}
+
 export interface VerifyQueueResponse {
 	linked: boolean; // false → this account isn't a known reporter
 	reporter?: { name: string; slack_user_id: string };
+	viewing_other?: boolean; // admin is viewing someone else's queue (read-only)
+	admin?: boolean;
+	reporters?: VerifyReporterOption[]; // admin-only queue-picker directory
 	total?: number;
 	results: VerifyQueueItem[];
 	recent: VerifyQueueItem[]; // confirmed/rejected in the last 14 days
@@ -631,9 +645,12 @@ class InkApiClient {
 	// ── Reporter verification queue ──────────────────────────────────────
 	// The web complement to the Slack DM review loop. Scoped server-side to the
 	// logged-in user's own reported issues via current_reporter_slack_id.
+	// Admins may pass a reporter slack_user_id to view that user's queue
+	// (read-only — the action endpoints stay reporter-gated server-side).
 
-	async getVerifyQueue(): Promise<VerifyQueueResponse> {
-		return this.fetch('/issues/verify_queue');
+	async getVerifyQueue(reporter?: string): Promise<VerifyQueueResponse> {
+		const qs = reporter ? `?reporter=${encodeURIComponent(reporter)}` : '';
+		return this.fetch(`/issues/verify_queue${qs}`);
 	}
 
 	// Accept the fix — confirms the resolution and releases the reporter's next

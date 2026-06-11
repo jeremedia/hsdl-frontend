@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { createQuery, createMutation, useQueryClient } from '@tanstack/svelte-query';
-	import { inkApi, type VerifyQueueItem } from '$lib/services/ink-api';
+	import { writable, derived } from 'svelte/store';
+	import { inkApi, type VerifyQueueItem, type VerifyQueueResponse } from '$lib/services/ink-api';
 	import {
 		ChevronDown, ChevronRight, ExternalLink, Image, Check, X, Send,
-		CheckCircle2, Inbox, MessageSquare, Paperclip, Loader2
+		CheckCircle2, Inbox, MessageSquare, Paperclip, Loader2, Users
 	} from 'lucide-svelte';
 	import ImageGallery from '$lib/components/ImageGallery.svelte';
 	import { base } from '$app/paths';
@@ -13,7 +14,20 @@
 
 	// Identity (who am I + am I a known reporter) and the queue itself.
 	const meQuery = createQuery({ queryKey: ['ink', 'me'], queryFn: () => inkApi.getMe() });
-	const queueQuery = createQuery({ queryKey: ['ink', 'verify-queue'], queryFn: () => inkApi.getVerifyQueue() });
+
+	// Admin queue picker: '' = my own queue, otherwise a reporter slack_user_id.
+	// A Svelte store (not $state) because TanStack 5.90 reads reactive query
+	// options through Svelte stores, not runes — same bridge as the Lab page.
+	// placeholderData keeps the previous queue (and the picker itself) rendered
+	// while a switch is in flight instead of flashing the loading screen.
+	const reporterStore = writable<string>('');
+	const queueQuery = createQuery(
+		derived(reporterStore, (reporter) => ({
+			queryKey: ['ink', 'verify-queue', reporter],
+			queryFn: () => inkApi.getVerifyQueue(reporter || undefined),
+			placeholderData: (prev: VerifyQueueResponse | undefined) => prev
+		}))
+	);
 
 	// ── UI state ──
 	let expandedIds = $state<Set<string>>(new Set());
@@ -61,6 +75,24 @@
 	});
 
 	const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, normal: 2, low: 3, none: 4 };
+
+	// Admin view-as state. readOnly hides the confirm/reject/resend actions —
+	// the server enforces the same boundary (authorize_reporter! 403s cross-user
+	// actions), this just keeps the UI honest about it.
+	const readOnly = $derived(Boolean($queueQuery.data?.viewing_other));
+	const viewedName = $derived($queueQuery.data?.reporter?.name ?? '');
+	const reporterOptions = $derived(
+		($queueQuery.data?.reporters ?? []).filter(
+			(r) => r.slack_user_id !== ($meQuery.data?.slack_user_id ?? '')
+		)
+	);
+
+	// Collapse expansion + any in-progress reject when the viewed queue changes.
+	$effect(() => {
+		$reporterStore;
+		expandedIds = new Set();
+		cancelReject();
+	});
 
 	// Client-side sort + filter over the (small) pending list.
 	const pending = $derived($queueQuery.data?.results ?? []);
@@ -165,6 +197,29 @@
 		</a>
 	</div>
 
+	<!-- Admin queue picker: view any reporter's review queue (read-only). -->
+	{#if $meQuery.data?.admin && ($queueQuery.data?.reporters?.length ?? 0) > 0}
+		<div class="flex items-center gap-2 flex-wrap mt-3">
+			<Users size={13} class="text-text-theme-tertiary flex-shrink-0" />
+			<label for="verify-queue-picker" class="text-xs text-text-theme-secondary">Viewing queue</label>
+			<select
+				id="verify-queue-picker"
+				bind:value={$reporterStore}
+				class="text-xs bg-surface-elevated border border-theme rounded-md px-2 py-1.5 text-text-theme-primary cursor-pointer focus:outline-none focus:border-interactive"
+			>
+				<option value="">My queue ({$meQuery.data?.verify_pending ?? 0})</option>
+				{#each reporterOptions as r (r.slack_user_id)}
+					<option value={r.slack_user_id}>{r.name} ({r.pending})</option>
+				{/each}
+			</select>
+			{#if readOnly}
+				<span class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+					Read-only — {viewedName}'s queue
+				</span>
+			{/if}
+		</div>
+	{/if}
+
 	{#if $queueQuery.isPending || $meQuery.isPending}
 		<div class="py-16 text-center text-sm text-text-theme-tertiary">Loading your queue…</div>
 	{:else if $queueQuery.isError}
@@ -207,8 +262,12 @@
 			<!-- Caught up -->
 			<div class="mt-6 rounded-lg border border-theme bg-surface-elevated p-8 text-center">
 				<CheckCircle2 size={30} class="mx-auto text-green-500 mb-2" />
-				<div class="text-sm text-text-theme-primary font-medium">You're all caught up</div>
-				<p class="text-xs text-text-theme-secondary mt-1">Nothing waiting for your verification right now.</p>
+				<div class="text-sm text-text-theme-primary font-medium">
+					{readOnly ? `${viewedName} is all caught up` : "You're all caught up"}
+				</div>
+				<p class="text-xs text-text-theme-secondary mt-1">
+					Nothing waiting for {readOnly ? `${viewedName}'s` : 'your'} verification right now.
+				</p>
 			</div>
 		{:else}
 			<div class="space-y-2">
@@ -301,8 +360,15 @@
 									</details>
 								{/if}
 
-								<!-- Reject panel -->
-								{#if isRejecting}
+								<!-- Reject panel + action footer: the reporter's controls. Hidden
+								     when an admin is viewing someone else's queue — accepting or
+								     rejecting on their behalf would corrupt the review signal (and
+								     the server 403s it anyway via authorize_reporter!). -->
+								{#if readOnly}
+									<div class="text-[11px] text-text-theme-tertiary pt-1 border-t border-theme/50">
+										Read-only — only {viewedName} can accept or reject this fix.
+									</div>
+								{:else if isRejecting}
 									<div class="rounded-md border border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-900/15 p-2.5 space-y-2">
 										<div class="text-[10px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-300">What's still wrong?</div>
 										<textarea
