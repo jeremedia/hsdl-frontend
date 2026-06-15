@@ -529,6 +529,21 @@
           oninput={(v) =>
             (dirtyHybrid = { ...dirtyHybrid, publisher_authority_weight: v })}
         />
+        <ParameterSlider
+          label="Publisher Name Match Boost"
+          paramKey="publisher_name_boost_weight"
+          value={(hp("publisher_name_boost_weight") as number) ?? 0}
+          min={0}
+          max={5}
+          step={0.1}
+          description="When the query NAMES a publisher ('CRS reports', 'Congressional Research Service'), re-rank that publisher's docs and offer a 'Browse all' chip to the full Publisher term-filter."
+          detailedDescription="Distinct from Publisher Authority above: that boosts authoritative publishers on every query; this fires only when the query matches a publisher NAME (phrase or acronym via synonyms). Publisher lives only in the controlled vocab, so free text reaches ~2,397 of ~35K CRS docs — this surfaces the publisher's work and links to the full set. Re-rank only, never injects; gated by a doc-count floor so only high-volume publishers qualify. Disabled by default (issue 0b476e21)."
+          scaleLabels={["0 (off)", "2.0 (suggested)", "5.0 (strong)"]}
+          disabled={config.locked}
+          formatValue={(v) => v.toFixed(1)}
+          oninput={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, publisher_name_boost_weight: v })}
+        />
         <div
           class="rounded-lg border border-theme bg-theme-secondary/40 p-3 space-y-3"
         >
