@@ -70,9 +70,9 @@
 
   function hp(
     key: keyof SearchConfigDetail["hybrid_params"],
-  ): number | boolean | undefined {
-    if (key in dirtyHybrid) return dirtyHybrid[key] as number | boolean;
-    return config?.hybrid_params?.[key] as number | boolean | undefined;
+  ): number | boolean | string | undefined {
+    if (key in dirtyHybrid) return dirtyHybrid[key] as number | boolean | string;
+    return config?.hybrid_params?.[key] as number | boolean | string | undefined;
   }
 
   function currentSynonyms(): Record<string, string[]> {
@@ -468,6 +468,72 @@
     />
 
     {#if config}
+      <AccordionSection title="Question Interpretation" open={true}>
+        <ParameterToggle
+          label="Question Interpretation"
+          paramKey="question_interpret_enabled"
+          value={(hp("question_interpret_enabled") as boolean) ?? false}
+          description="Detect a natural-language question and rewrite it to the topic before searching, so the keyword leg doesn't collapse on framing words."
+          detailedDescription="When a posted query reads as a question (interrogative lead or trailing '?'), a small model (default gpt-5.4-nano) rewrites it to the topic the researcher meant — 'Do you have instruction manuals for ship design?' becomes 'ship design'. A deterministic heuristic is the fast fallback when the model is slow or unavailable. Off by default (issue 498c6a2f)."
+          disabled={config.locked}
+          onchange={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, question_interpret_enabled: v })}
+        />
+        <div
+          class="rounded-lg border border-theme bg-theme-secondary/40 p-3 space-y-1.5"
+        >
+          <label
+            for="qi-model"
+            class="block text-sm font-semibold text-text-theme-primary"
+          >
+            Interpretation Model
+          </label>
+          <p class="text-[11px] text-text-theme-tertiary">
+            Which model rewrites the question. nano is cheapest/fastest; mini and
+            the full model trade latency for stronger rewrites.
+          </p>
+          <select
+            id="qi-model"
+            class="text-xs bg-surface-elevated border border-theme rounded-md pl-2 pr-8 py-1.5 text-text-theme-primary focus:outline-none focus:ring-1 focus:ring-interactive appearance-none bg-no-repeat bg-[length:16px_16px] bg-[position:right_6px_center] bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')]"
+            disabled={config.locked}
+            value={(hp("question_interpret_model") as string) ?? "gpt-5.4-nano"}
+            onchange={(e) =>
+              (dirtyHybrid = {
+                ...dirtyHybrid,
+                question_interpret_model: e.currentTarget.value,
+              })}
+          >
+            <option value="gpt-5.4-nano">gpt-5.4-nano (default)</option>
+            <option value="gpt-5.4-mini">gpt-5.4-mini</option>
+            <option value="gpt-5.4">gpt-5.4</option>
+          </select>
+        </div>
+        <ParameterSlider
+          label="Interpretation Timeout"
+          paramKey="question_interpret_timeout_ms"
+          value={(hp("question_interpret_timeout_ms") as number) ?? 1500}
+          min={200}
+          max={10000}
+          step={100}
+          description="How long to wait for the model before falling back to the fast heuristic rewrite."
+          detailedDescription="Cold model calls run ~0.9–2.2s; 3000ms avoids most cold-start fallbacks, though the very first call after a period of inactivity may still cold-start and fall back to the heuristic. Lower values favor latency over rewrite quality."
+          scaleLabels={["200 (tight)", "3000 (recommended)", "10000 (max)"]}
+          disabled={config.locked}
+          formatValue={(v) => `${v} ms`}
+          oninput={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, question_interpret_timeout_ms: v })}
+        />
+        <ParameterToggle
+          label="Apply Interpreted Year Range"
+          paramKey="question_interpret_apply_year_range"
+          value={(hp("question_interpret_apply_year_range") as boolean) ?? true}
+          description="When the question implies a date range ('since 2020', 'in the last five years'), apply it as a publish-year filter on the rewritten search."
+          detailedDescription="The model can extract a year range from the question alongside the topic. When on, that range is applied as a year filter; when off, only the topic rewrite is used."
+          disabled={config.locked}
+          onchange={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, question_interpret_apply_year_range: v })}
+        />
+      </AccordionSection>
       <AccordionSection title="What Matters More" open={true}>
         <ParameterSlider
           label="Title Match Boost"
@@ -804,6 +870,20 @@
           disabled={config.locked}
           oninput={(v) =>
             (dirtyHybrid = { ...dirtyHybrid, creator_surname_max_authorities: v })}
+        />
+        <ParameterSlider
+          label="Surname Common-Word Cutoff"
+          paramKey="creator_surname_max_corpus_freq"
+          value={(hp("creator_surname_max_corpus_freq") as number) ?? 500}
+          min={0}
+          max={5000}
+          step={100}
+          description="Skip bare-surname author matching for query words this common (corpus doc-frequency), so common nouns don't inject unrelated author/org documents."
+          detailedDescription="Real surnames are rare in titles/descriptions ('garza' 42, 'marlatt' 27); common nouns are in the thousands ('ship' 4,718, 'design' 25,036). 'design' leads the authority 'Design Entrepreneurship Institute', so 'ship design' was injecting an unrelated election report via the author signal (issue 498c6a2f). A query word appearing in more than this many documents is skipped for surname matching. 0 disables the guard."
+          scaleLabels={["0 (off)", "500 (default)", "5000 (loose)"]}
+          disabled={config.locked}
+          oninput={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, creator_surname_max_corpus_freq: v })}
         />
         <ParameterSlider
           label="Legacy Candidate Depth"

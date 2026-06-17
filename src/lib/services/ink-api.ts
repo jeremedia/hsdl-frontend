@@ -76,6 +76,11 @@ export interface SearchConfigDetail extends SearchConfigSummary {
 		hybrid_counts_v2_enabled?: boolean;
 		creator_surname_match_enabled?: boolean;
 		creator_surname_max_authorities?: number;
+		creator_surname_max_corpus_freq?: number;
+		question_interpret_enabled?: boolean;
+		question_interpret_model?: string;
+		question_interpret_timeout_ms?: number;
+		question_interpret_apply_year_range?: boolean;
 		series_collapse_enabled: boolean;
 		bm25_enabled?: boolean;
 		lists_boost_weight: number;
