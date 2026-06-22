@@ -32,15 +32,21 @@
 
 	// Pull terms array out of the filters object. Tolerant: accepts
 	// missing key, non-array value, or array of non-strings.
-	let termIds = $derived(
-		Array.isArray(filters?.terms)
-			? (filters.terms as unknown[]).filter((x): x is string => typeof x === 'string')
-			: []
-	);
+	// Two positive buckets: `terms` (Any — OR within a field) and `all_terms`
+	// (All — same-field AND, issue d0e7507f). A field lives entirely in one
+	// bucket; the per-field Any/All toggle re-buckets that field's ids. The
+	// union drives the chip-label lookup and autocomplete dedup.
+	function asStringArray(v: unknown): string[] {
+		return Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+	}
+	let anyIds = $derived(asStringArray(filters?.terms));
+	let allIds = $derived(asStringArray(filters?.all_terms));
+	let allIdSet = $derived(new Set(allIds));
+	let termIds = $derived([...anyIds, ...allIds]);
 
-	// Everything in filters EXCEPT terms — round-tripped untouched.
+	// Everything in filters EXCEPT the two term buckets — round-tripped untouched.
 	let restJson = $derived(() => {
-		const { terms: _, ...rest } = (filters ?? {}) as Record<string, unknown>;
+		const { terms: _t, all_terms: _a, ...rest } = (filters ?? {}) as Record<string, unknown>;
 		return JSON.stringify(rest, null, 2);
 	});
 
@@ -123,16 +129,19 @@
 		return data.filter((t) => !already.has(t.id));
 	});
 
-	function emit(next_terms: string[]) {
+	function emitBuckets(nextAny: string[], nextAll: string[]) {
 		const next = { ...(filters ?? {}) } as Record<string, unknown>;
-		if (next_terms.length === 0) delete next.terms;
-		else next.terms = next_terms;
+		if (nextAny.length) next.terms = nextAny;
+		else delete next.terms;
+		if (nextAll.length) next.all_terms = nextAll;
+		else delete next.all_terms;
 		onchange(next);
 	}
 
 	function addTerm(t: FilterTerm) {
 		if (termIds.includes(t.id)) return;
-		emit([...termIds, t.id]);
+		// New terms default to the Any (OR) bucket.
+		emitBuckets([...anyIds, t.id], allIds);
 		searchInput = '';
 		debouncedQuery = '';
 		showDropdown = false;
@@ -141,7 +150,21 @@
 	}
 
 	function removeTerm(id: string) {
-		emit(termIds.filter((tid) => tid !== id));
+		emitBuckets(anyIds.filter((tid) => tid !== id), allIds.filter((tid) => tid !== id));
+	}
+
+	// Move a whole field's ids between the Any (OR) and All (AND) buckets.
+	function setFieldMode(ids: string[], mode: 'any' | 'all') {
+		const moving = new Set(ids);
+		const restAny = anyIds.filter((id) => !moving.has(id));
+		const restAll = allIds.filter((id) => !moving.has(id));
+		if (mode === 'all') emitBuckets(restAny, [...restAll, ...ids]);
+		else emitBuckets([...restAny, ...ids], restAll);
+	}
+
+	// A field is in "All" (AND) mode iff its chips live in the all_terms bucket.
+	function fieldIsAll(chips: FilterTerm[]): boolean {
+		return chips.some((c) => allIdSet.has(c.id));
 	}
 
 	function onKeydown(e: KeyboardEvent) {
@@ -184,8 +207,10 @@
 			}
 			restError = null;
 			const merged: Record<string, unknown> = { ...parsed };
-			if (termIds.length) merged.terms = termIds;
+			if (anyIds.length) merged.terms = anyIds;
 			else delete merged.terms;
+			if (allIds.length) merged.all_terms = allIds;
+			else delete merged.all_terms;
 			onchange(merged);
 		} catch (e) {
 			restError = `Invalid JSON: ${(e as Error).message}`;
@@ -205,12 +230,32 @@
 		<div class="space-y-2">
 			{#each chipsByField() as [field, chips] (field)}
 				<div class="space-y-1">
-					<p class="text-[10px] uppercase tracking-wider text-text-theme-tertiary">
-						{field}
+					<div class="flex items-center gap-2">
+						<p class="text-[10px] uppercase tracking-wider text-text-theme-tertiary">{field}</p>
+						<div
+							class="inline-flex rounded border border-border-theme overflow-hidden text-[9px] uppercase tracking-wider"
+							role="group"
+							aria-label="{field} match mode"
+						>
+							<button
+								type="button"
+								title="Match ANY of these {field} terms (OR)"
+								aria-pressed={!fieldIsAll(chips)}
+								class="px-1.5 py-[1px] {fieldIsAll(chips) ? 'text-text-theme-tertiary hover:bg-surface-secondary' : 'bg-interactive text-white'}"
+								onclick={() => setFieldMode(chips.map((c) => c.id), 'any')}
+							>Any</button>
+							<button
+								type="button"
+								title="Match ALL of these {field} terms (AND)"
+								aria-pressed={fieldIsAll(chips)}
+								class="px-1.5 py-[1px] {fieldIsAll(chips) ? 'bg-interactive text-white' : 'text-text-theme-tertiary hover:bg-surface-secondary'}"
+								onclick={() => setFieldMode(chips.map((c) => c.id), 'all')}
+							>All</button>
+						</div>
 						{#if chips.length > 1}
-							<span class="ml-1 normal-case text-[9px] text-text-theme-tertiary">· any of these</span>
+							<span class="normal-case text-[9px] text-text-theme-tertiary">{fieldIsAll(chips) ? 'must have all' : 'any of these'}</span>
 						{/if}
-					</p>
+					</div>
 					<div class="flex flex-wrap gap-1.5">
 						{#each chips as chip (chip.id)}
 							<span
