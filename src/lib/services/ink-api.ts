@@ -323,6 +323,8 @@ export interface FeedbackIssueListParams {
 	reporter?: string;
 	assignee?: string;
 	q?: string;
+	subproject?: string;
+	inbox?: boolean;
 }
 
 export interface FeedbackIssueListResponse {
@@ -671,8 +673,15 @@ class InkApiClient {
 		if (params.reporter) searchParams.set('reporter', params.reporter);
 		if (params.assignee) searchParams.set('assignee', params.assignee);
 		if (params.q) searchParams.set('q', params.q);
+		if (params.subproject) searchParams.set('subproject', params.subproject);
+		if (params.inbox) searchParams.set('inbox', 'true');
 		const qs = searchParams.toString();
 		return this.fetch(`/issues/list${qs ? '?' + qs : ''}`);
+	}
+
+	// One issue's full (expanded) detail — for the triage viewer.
+	async getFeedbackIssue(id: string): Promise<FeedbackIssueExpanded> {
+		return this.fetch(`/issues/${id}`);
 	}
 
 	async updateIssuePriority(id: string, priority: string): Promise<FeedbackIssueExpanded> {

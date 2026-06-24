@@ -69,6 +69,8 @@
 
 	let currentPath = $derived($page.url.pathname);
 	let isEditorPage = $derived(currentPath.match(/\/documents\/[^/]+$/) !== null);
+	// Triage workbench is full-bleed: no max-width, no padding (edge-to-edge 3-pane).
+	let isFullBleed = $derived(currentPath.endsWith('/feedback/queue'));
 
 	const navItems = [
 		{ href: `${base}/`, label: 'Dashboard', icon: LayoutDashboard },
@@ -81,7 +83,7 @@
 		{ href: `${base}/lab`, label: 'Lab', icon: SlidersHorizontal },
 		{ href: `${base}/feedback`, label: 'Feedback', icon: MessageSquare },
 		{ href: `${base}/feedback/verify`, label: 'Verify', icon: CheckCircle2 },
-		{ href: `${base}/feedback/queue`, label: 'Queue', icon: Anchor },
+		{ href: `${base}/feedback/queue`, label: 'Triage', icon: Anchor },
 		{ href: `${base}/overview`, label: 'Overview', icon: Info }
 	];
 
@@ -247,8 +249,8 @@
 			{/if}
 
 			<!-- Main Content -->
-			<main class="flex-1 overflow-auto {isEditorPage ? '' : 'py-4'}">
-				<div class="{isEditorPage ? 'px-4 h-full' : 'max-w-7xl mx-auto px-4 sm:px-6'}">
+			<main class="flex-1 overflow-auto {isEditorPage || isFullBleed ? '' : 'py-4'}">
+				<div class="{isFullBleed ? 'h-full' : isEditorPage ? 'px-4 h-full' : 'max-w-7xl mx-auto px-4 sm:px-6'}">
 					{@render children()}
 				</div>
 			</main>
