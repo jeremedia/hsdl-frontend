@@ -576,7 +576,7 @@ export interface WorkGroup {
 	full_id: string;
 	name: string;
 	assignee: string;
-	status: 'forming' | 'active' | 'shipped';
+	status: 'forming' | 'active' | 'parked' | 'shipped';
 	target_version: string | null;
 	position: number;
 	member_count: number;

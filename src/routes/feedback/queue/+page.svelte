@@ -36,7 +36,9 @@
 		ExternalLink,
 		GripVertical,
 		Pencil,
-		Check
+		Check,
+		Pause,
+		Play
 	} from 'lucide-svelte';
 
 	const SUBPROJECTS = ['frontend', 'ink', 'rails'];
@@ -281,6 +283,14 @@
 			await loadInbox();
 		});
 	}
+	// Park (set aside) / unpark a group. Parked = visible + owned + ordered but out of
+	// the active work rotation (e.g. frontend groups during a design freeze).
+	async function togglePark(group: WorkGroup) {
+		await withBusy(async () => {
+			await inkApi.updateWorkGroup(group.full_id, { status: group.status === 'parked' ? 'active' : 'parked' });
+			await loadBoard();
+		});
+	}
 	function startRename(group: { full_id: string; name: string }) {
 		renamingId = group.full_id;
 		renameValue = group.name === 'Untitled' ? '' : group.name;
@@ -504,7 +514,7 @@
 									<!-- bin = append drop target -->
 									<!-- svelte-ignore a11y_no_static_element_interactions -->
 									<div
-										class="rounded border bg-surface {dropHint?.zone === group.full_id ? 'border-chds-blue ring-1 ring-chds-blue' : 'border-default'}"
+										class="rounded border bg-surface {group.status === 'parked' ? 'opacity-60' : ''} {dropHint?.zone === group.full_id ? 'border-chds-blue ring-1 ring-chds-blue' : 'border-default'}"
 										ondragover={(e) => overZone(e, group.full_id)}
 										ondrop={(e) => dropToGroup(e, group, null)}
 									>
@@ -518,7 +528,9 @@
 													{#if expandedGroup[group.full_id]}<ChevronDown class="w-3 h-3 flex-shrink-0" />{:else}<ChevronRight class="w-3 h-3 flex-shrink-0" />{/if}
 													<span class="text-xs font-medium {group.name === 'Untitled' ? 'text-text-theme-tertiary italic' : 'text-text-theme-primary'} truncate">{group.name}</span>
 													<span class="text-[10px] text-text-theme-tertiary flex-shrink-0">{group.member_count}</span>
+													{#if group.status === 'parked'}<span class="text-[9px] uppercase tracking-wide px-1 py-0.5 rounded bg-amber-200 text-amber-800 dark:bg-amber-900 dark:text-amber-200 flex-shrink-0">parked</span>{/if}
 												</button>
+												<button class="p-0.5 rounded flex-shrink-0 {group.status === 'parked' ? 'text-amber-600' : 'text-text-theme-tertiary hover:text-text-theme-primary'} hover:bg-surface-secondary" title={group.status === 'parked' ? 'Unpark (return to active)' : 'Park (set aside)'} onclick={() => togglePark(group)} disabled={busy}>{#if group.status === 'parked'}<Play class="w-3 h-3" />{:else}<Pause class="w-3 h-3" />{/if}</button>
 												<button class="p-0.5 rounded text-text-theme-tertiary hover:text-text-theme-primary hover:bg-surface-secondary flex-shrink-0" title="Rename" onclick={() => startRename(group)}><Pencil class="w-3 h-3" /></button>
 												{#if selectedId}
 													<button class="p-0.5 rounded text-chds-blue hover:bg-surface-secondary flex-shrink-0" title="Place selected issue here" onclick={() => place(selectedId!, group)} disabled={busy}><Plus class="w-3.5 h-3.5" /></button>
