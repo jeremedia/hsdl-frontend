@@ -551,6 +551,48 @@ export interface BrowseNodePayload {
 	position?: number | null;
 }
 
+// ── WorkGroups (developer queue board) ─────────────────────────────────
+// The horizontal scheduling axis on top of each issue's lifecycle: named,
+// ordered, shippable per-developer issue bundles. Backs the kanban board at
+// /ink/feedback/queue. See Api::Ink::V1::WorkGroupsController.
+export interface WorkGroupMember {
+	id: string; // 8-char short id
+	full_id: string;
+	title: string;
+	category: string;
+	priority: string;
+	status: string;
+	subproject: string | null;
+	assignee: string | null;
+	position: number;
+	reporter_review_status: string | null;
+	age_days: number;
+}
+
+export interface WorkGroup {
+	id: string; // 8-char short id
+	full_id: string;
+	name: string;
+	assignee: string;
+	status: 'forming' | 'active' | 'shipped';
+	target_version: string | null;
+	position: number;
+	member_count: number;
+	shipped_at: string | null;
+	created_at: string;
+	issues?: WorkGroupMember[];
+}
+
+export interface WorkGroupBoard {
+	groups: WorkGroup[];
+	inbox: { total: number; shown: number; issues: WorkGroupMember[] };
+	filters: { assignees: string[]; group_statuses: string[] };
+}
+
+export interface ShipResult extends WorkGroup {
+	not_deploy_ready: Array<{ id: string; short_id: string; status: string; title: string }>;
+}
+
 class InkApiClient {
 	private baseUrl: string;
 
@@ -681,6 +723,48 @@ class InkApiClient {
 	// it the one Slack is waiting on.
 	async resendReviewDm(id: string): Promise<{ ok: boolean }> {
 		return this.fetch(`/issues/${id}/resend_review_dm`, { method: 'POST' });
+	}
+
+	// WorkGroups — the developer queue board
+	async getWorkGroupBoard(): Promise<WorkGroupBoard> {
+		return this.fetch('/work_groups');
+	}
+
+	async createWorkGroup(name: string, assignee: string, targetVersion?: string): Promise<WorkGroup> {
+		return this.fetch('/work_groups', {
+			method: 'POST',
+			body: JSON.stringify({ name, assignee, target_version: targetVersion })
+		});
+	}
+
+	async updateWorkGroup(
+		id: string,
+		patch: { name?: string; target_version?: string | null; status?: string; position?: number }
+	): Promise<WorkGroup> {
+		return this.fetch(`/work_groups/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+	}
+
+	async deleteWorkGroup(id: string): Promise<{ ok: boolean; deleted: string; rehomed_to_inbox: number }> {
+		return this.fetch(`/work_groups/${id}`, { method: 'DELETE' });
+	}
+
+	async shipWorkGroup(id: string, version: string): Promise<ShipResult> {
+		return this.fetch(`/work_groups/${id}/ship`, { method: 'POST', body: JSON.stringify({ version }) });
+	}
+
+	// The unified drag endpoint. work_group_id null returns the issue to the
+	// inbox; position is the 1-based slot within the destination group (omit to
+	// append). Returns the full recomputed board (server is the source of truth
+	// for sibling positions).
+	async moveIssue(
+		issueId: string,
+		workGroupId: string | null,
+		position?: number
+	): Promise<WorkGroupBoard> {
+		return this.fetch('/work_groups/move_issue', {
+			method: 'POST',
+			body: JSON.stringify({ issue_id: issueId, work_group_id: workGroupId, position })
+		});
 	}
 
 	// Enrichment
