@@ -901,6 +901,16 @@
             (dirtyHybrid = { ...dirtyHybrid, fetch_size_multiplier: v })}
         />
         <ParameterToggle
+          label="Semantic Search"
+          paramKey="semantic_search_enabled"
+          value={(hp("semantic_search_enabled") as boolean) ?? true}
+          description="Master switch for the embedding (semantic) leg. OFF = keyword-only, no OpenAI calls."
+          detailedDescription="When OFF, search runs keyword-only across the whole app and never calls OpenAI to embed the query — a deliberate cost/ops kill-switch (e.g. during an OpenAI quota lapse). This is distinct from automatic degradation: if embeddings are merely unavailable, search already falls back to keyword-only on its own and flags the response as degraded. Turning this OFF is the intentional version of that, with no operator alert. The response reports semantic_search_enabled:false. Default ON (issue 8946756f)."
+          disabled={config.locked}
+          onchange={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, semantic_search_enabled: v })}
+        />
+        <ParameterToggle
           label="BM25 Keyword Ranking"
           paramKey="bm25_enabled"
           value={(hp("bm25_enabled") as boolean) ?? true}

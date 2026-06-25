@@ -83,6 +83,7 @@ export interface SearchConfigDetail extends SearchConfigSummary {
 		question_interpret_apply_year_range?: boolean;
 		series_collapse_enabled: boolean;
 		bm25_enabled?: boolean;
+		semantic_search_enabled?: boolean;
 		lists_boost_weight: number;
 		tab_section_boost_weight: number;
 		publisher_authority_tiers?: Record<string, { weight: number; publishers: string[] }>;
