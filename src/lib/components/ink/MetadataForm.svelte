@@ -8,6 +8,10 @@
 
 	let { document }: { document: InkDocumentFull } = $props();
 
+	// Obsolete vocabulary fields hidden from the editor -- I3P is unified into the
+	// canonical fields and Old Subject is dead clutter (issue 8dfb860b).
+	const OBSOLETE_VOCAB_FIELDS = new Set(['I3P_Creator', 'I3P_Publisher', 'Old Subject']);
+
 	const queryClient = useQueryClient();
 
 	// Editable fields -- initialized and synced via $effect when document prop changes
@@ -18,6 +22,7 @@
 	let reportNumber = $state('');
 	let enableStatus = $state<'not_set' | 'enabled' | 'disabled'>('not_set');
 	let selectedAudience = $state('');
+	let notes = $state('');
 
 	// Section collapse state -- persisted so the editor remembers your layout
 	const collapsed = inkPrefs.get<string[]>('editor.collapsedSections', []);
@@ -47,6 +52,7 @@
 		reportNumber = document.report_number || '';
 		enableStatus = document.enable_status;
 		selectedAudience = document.selected_audience || '';
+		notes = document.notes || '';
 	});
 
 	let isDirty = $derived(
@@ -56,7 +62,8 @@
 		url !== (document.url || '') ||
 		reportNumber !== (document.report_number || '') ||
 		enableStatus !== document.enable_status ||
-		selectedAudience !== (document.selected_audience || '')
+		selectedAudience !== (document.selected_audience || '') ||
+		notes !== (document.notes || '')
 	);
 
 	// Character/word count for description
@@ -100,7 +107,8 @@
 			url: url || null,
 			report_number: reportNumber || null,
 			enable_status: enableStatus,
-			selected_audience: selectedAudience || null
+			selected_audience: selectedAudience || null,
+			notes: notes || null
 		});
 	}
 
@@ -241,6 +249,11 @@
 				<label for="doc-url" class="block text-xs font-medium text-text-theme-secondary mb-0.5">URL</label>
 				<input id="doc-url" type="url" bind:value={url} class="input text-xs py-1.5" />
 			</div>
+
+			<div>
+				<label for="doc-notes" class="block text-xs font-medium text-text-theme-secondary mb-0.5">Notes</label>
+				<textarea id="doc-notes" bind:value={notes} rows={3} class="input text-xs resize-y leading-relaxed" placeholder="Internal staff notes"></textarea>
+			</div>
 		</div>
 	</section>
 
@@ -290,7 +303,7 @@
 			</button>
 			{#if showVocabTerms}
 				<div class="space-y-3">
-					{#each $vocabFieldsQuery.data as field (field.id)}
+					{#each $vocabFieldsQuery.data.filter((f) => !OBSOLETE_VOCAB_FIELDS.has(f.name)) as field (field.id)}
 						{@const fieldTerms = document.taxonomy[field.name] || []}
 						<div>
 							<div class="flex items-center justify-between mb-0.5">

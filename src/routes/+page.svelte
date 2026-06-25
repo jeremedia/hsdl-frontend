@@ -208,7 +208,7 @@
 								<p class="text-sm font-medium truncate group-hover:text-interactive transition-colors">
 									{doc.title}
 								</p>
-								<p class="text-xs text-text-theme-tertiary">{doc.source || 'Unknown source'}</p>
+								<p class="text-xs text-text-theme-tertiary">{doc.publisher || doc.source || 'Unknown source'}</p>
 							</div>
 							<div class="flex items-center gap-3 flex-shrink-0 ml-4">
 								{#if doc.health_score != null}

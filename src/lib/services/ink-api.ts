@@ -14,6 +14,7 @@ export interface InkDocument {
 	publish_date: string | null;
 	publish_year: number | null;
 	source: string | null;
+	publisher?: string | null; // populated on recent_additions rows (ab332e38)
 	report_number: string | null;
 	health_score: number | null;
 	enable_status: 'not_set' | 'enabled' | 'disabled';
@@ -29,6 +30,7 @@ export interface InkDocumentFull extends InkDocument {
 	file_extension: string | null;
 	file_size: number | null;
 	access_level: string | null;
+	notes: string | null; // editable staff notes (fe9d320e)
 	// Format detection (content-type scan, c01ec923). file_format = catalogued/derived
 	// human format; format_mismatch = true when the scan auto-corrected this record's
 	// file type (content_type_status === 'corrected') -- a "was fixed" marker.
