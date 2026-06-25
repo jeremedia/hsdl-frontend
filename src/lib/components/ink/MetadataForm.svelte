@@ -178,6 +178,28 @@
 	<!-- Core Metadata (always visible) -->
 	<section>
 		<div class="space-y-2.5">
+			<!-- Format (read-only): auto-detected from the file; flags records the content-type scan auto-corrected (c01ec923) -->
+			<div class="flex items-center gap-2 flex-wrap">
+				<span class="text-xs font-medium text-text-theme-secondary">Format</span>
+				<span class="text-xs text-text-theme-primary">{document.file_format ?? '—'}</span>
+				{#if document.format_mismatch}
+					<span class="inline-flex items-center gap-1 text-[0.6875rem] font-medium text-warning" title="This record's file type was catalogued incorrectly; the content-type scan detected the real type from the file and corrected it.">
+						<AlertCircle size={12} />
+						auto-corrected
+					</span>
+				{:else if document.content_type_status === 'verified'}
+					<span class="inline-flex items-center gap-0.5 text-[0.625rem] text-text-theme-tertiary" title="File type verified against the actual file bytes">
+						<Check size={11} /> verified
+					</span>
+				{:else if document.content_type_status === 'unscanned'}
+					<span class="text-[0.625rem] text-text-theme-tertiary">not yet verified</span>
+				{:else if document.content_type_status === 'no_file'}
+					<span class="text-[0.625rem] text-text-theme-tertiary">no file</span>
+				{:else if document.content_type_status === 'scan_error'}
+					<span class="text-[0.625rem] text-text-theme-tertiary">scan error</span>
+				{/if}
+			</div>
+
 			<div>
 				<label for="doc-title" class="block text-xs font-medium text-text-theme-secondary mb-0.5">Title</label>
 				<input id="doc-title" type="text" bind:value={title} class="input text-sm py-1.5" />

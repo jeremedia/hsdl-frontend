@@ -29,6 +29,12 @@ export interface InkDocumentFull extends InkDocument {
 	file_extension: string | null;
 	file_size: number | null;
 	access_level: string | null;
+	// Format detection (content-type scan, c01ec923). file_format = catalogued/derived
+	// human format; format_mismatch = true when the scan auto-corrected this record's
+	// file type (content_type_status === 'corrected') -- a "was fixed" marker.
+	file_format: string | null;
+	content_type_status: string | null;
+	format_mismatch: boolean;
 	selected_audience: string | null;
 	pdf_url: string | null;
 	has_docling_markdown: boolean;
