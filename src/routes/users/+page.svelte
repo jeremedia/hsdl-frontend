@@ -113,7 +113,7 @@
 				<thead class="bg-surface-secondary text-text-theme-secondary text-left">
 					<tr>
 						<th scope="col" class="px-3 py-2 font-medium">Name / Email</th>
-						<th scope="col" class="px-3 py-2 font-medium">Role</th>
+						<th scope="col" class="px-3 py-2 font-medium">Pulse role</th>
 						<th scope="col" class="px-3 py-2 font-medium">Admin</th>
 						<th scope="col" class="px-3 py-2 font-medium">Slack ID</th>
 						<th scope="col" class="px-3 py-2 font-medium">Reporter</th>
@@ -217,4 +217,92 @@
 			{/each}
 		</datalist>
 	{/if}
+
+	<details class="mt-6 rounded-lg border border-border-theme bg-surface-secondary text-sm">
+		<summary class="cursor-pointer select-none px-4 py-3 font-medium text-text-theme-primary">
+			About this page
+		</summary>
+		<div class="space-y-4 border-t border-border-theme px-4 py-4 text-text-theme-secondary">
+			<section>
+				<h2 class="mb-1 font-semibold text-text-theme-primary">What this is</h2>
+				<p>
+					The admin-only user panel for INK. It lists every account that has signed into
+					INK/HSDL and lets admins manage two things per account: which <strong>Slack reporter
+					identity</strong> it's linked to, and whether it has <strong>admin access</strong>.
+				</p>
+			</section>
+			<section>
+				<h2 class="mb-1 font-semibold text-text-theme-primary">Why it's needed</h2>
+				<ul class="list-disc space-y-1 pl-5">
+					<li>
+						<strong>Reporter linkage.</strong> The feedback verification queue
+						(<span class="font-mono text-xs">/ink/feedback/verify</span>) scopes a person's
+						issues to their Slack id. If an account isn't linked, a librarian who reported
+						issues sees an empty verify queue even when fixes are waiting for their sign-off.
+						This page links them without a console.
+					</li>
+					<li>
+						<strong>Admin grants.</strong> Admin access used to require a code/env change plus
+						a server restart. Here an admin grants or revokes it at runtime.
+					</li>
+				</ul>
+			</section>
+			<section>
+				<h2 class="mb-1 font-semibold text-text-theme-primary">Columns</h2>
+				<ul class="list-disc space-y-1 pl-5">
+					<li><strong>Name / Email</strong> — the account.</li>
+					<li>
+						<strong>Pulse role</strong> — the role assigned by CHDS Pulse (the login provider).
+						Read-only here: Pulse overwrites it on every login, so it can't be edited in INK.
+					</li>
+					<li>
+						<strong>Admin</strong> — whether the account is an admin, and <em>why</em>. Sources:
+						<em>Pulse role</em> (Pulse marked them admin), <em>Email allowlist</em> (on the
+						built-in admin email list — a permanent floor that can't be locked out), and
+						<em>Granted</em> (granted here). The Grant / Revoke button toggles only the
+						<em>Granted</em> source; an account can be admin via more than one at once.
+					</li>
+					<li>
+						<strong>Slack ID</strong> — the Slack identity this account's reported issues are
+						filed under. Click to edit; the dropdown suggests known reporters. It must be
+						unique — linking an id already held by another account is blocked.
+					</li>
+					<li>
+						<strong>Reporter</strong> — how many issues this account has filed (via its linked
+						Slack id) and how many fixes are live awaiting their verify sign-off.
+					</li>
+					<li><strong>Joined</strong> — when the account was created.</li>
+				</ul>
+			</section>
+			<section>
+				<h2 class="mb-1 font-semibold text-text-theme-primary">
+					What an admin can do here (non-admins can't)
+				</h2>
+				<ul class="list-disc space-y-1 pl-5">
+					<li>
+						Reach this page at all — it's admin-only (no nav entry for non-admins; the API
+						returns 403).
+					</li>
+					<li>Edit any account's Slack-ID linkage.</li>
+					<li>
+						Grant or revoke the durable admin flag. You can't revoke your own admin (no
+						self-lockout).
+					</li>
+				</ul>
+			</section>
+			<section>
+				<h2 class="mb-1 font-semibold text-text-theme-primary">Good to know</h2>
+				<ul class="list-disc space-y-1 pl-5">
+					<li>
+						A Pulse role of <em>viewer</em> alongside Admin <em>Granted</em> is normal — admin
+						is separate from the Pulse role and never changes it.
+					</li>
+					<li>
+						Granting admin to someone already admin via Pulse/email pins it durably (it survives
+						a future Pulse role change) — harmless if otherwise redundant.
+					</li>
+				</ul>
+			</section>
+		</div>
+	</details>
 </div>
