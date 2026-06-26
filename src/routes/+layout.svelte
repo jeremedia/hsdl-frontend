@@ -3,7 +3,7 @@
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { inkApi } from '$lib/services/ink-api';
-	import { LayoutDashboard, FileText, Search, Info, Menu, X, Keyboard, Sun, Moon, Monitor, Zap, BarChart3, SlidersHorizontal, MessageSquare, FolderTree, CheckCircle2, Activity, Anchor } from 'lucide-svelte';
+	import { LayoutDashboard, FileText, Search, Info, Menu, X, Keyboard, Sun, Moon, Monitor, Zap, BarChart3, SlidersHorizontal, MessageSquare, FolderTree, CheckCircle2, Activity, Anchor, UsersRound } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { initTheme, destroyTheme, setColorMode, getThemeState, type ColorMode } from '$lib/stores/theme.svelte';
 	import '../app.css';
@@ -34,7 +34,7 @@
 		setColorMode(modeOrder[(idx + 1) % modeOrder.length]);
 	}
 
-	let user = $state<{ id: string; name: string; email: string; role: string | null; verify_pending?: number } | null>(null);
+	let user = $state<{ id: string; name: string; email: string; role: string | null; admin?: boolean; verify_pending?: number } | null>(null);
 	let authChecked = $state(false);
 	let accessDenied = $state(false);
 	let mobileMenuOpen = $state(false);
@@ -72,7 +72,7 @@
 	// Triage workbench is full-bleed: no max-width, no padding (edge-to-edge 3-pane).
 	let isFullBleed = $derived(currentPath.endsWith('/feedback/queue'));
 
-	const navItems = [
+	let navItems = $derived([
 		{ href: `${base}/`, label: 'Dashboard', icon: LayoutDashboard },
 		{ href: `${base}/documents`, label: 'Documents', icon: FileText },
 		{ href: `${base}/search`, label: 'Search', icon: Search },
@@ -84,8 +84,9 @@
 		{ href: `${base}/feedback`, label: 'Feedback', icon: MessageSquare },
 		{ href: `${base}/feedback/verify`, label: 'Verify', icon: CheckCircle2 },
 		{ href: `${base}/feedback/queue`, label: 'Triage', icon: Anchor },
+		...(user?.admin ? [{ href: `${base}/users`, label: 'Users', icon: UsersRound }] : []),
 		{ href: `${base}/overview`, label: 'Overview', icon: Info }
-	];
+	]);
 
 	function isActive(href: string): boolean {
 		if (href === `${base}/`) return currentPath === `${base}` || currentPath === `${base}/`;
