@@ -28,6 +28,12 @@
 
 	let reporters = $derived($usersQuery.data?.reporters ?? []);
 
+	const ADMIN_SOURCE_LABELS: Record<string, string> = {
+		pulse_role: 'Pulse role',
+		email_allowlist: 'Email allowlist',
+		granted: 'Granted'
+	};
+
 	function startEdit(u: AdminUserRow) {
 		editingId = u.id;
 		editValue = u.slack_user_id ?? '';
@@ -73,14 +79,9 @@
 		}
 	}
 
-	function canToggleGrant(u: AdminUserRow): boolean {
-		if (u.admin_granted) return true;
-		return true;
-	}
-
 	function adminBadge(u: AdminUserRow): string {
 		if (!u.admin) return 'No';
-		return u.admin_sources.join(', ');
+		return u.admin_sources.map((s) => ADMIN_SOURCE_LABELS[s] ?? s).join(', ');
 	}
 </script>
 
@@ -95,6 +96,7 @@
 	<input
 		type="text"
 		placeholder="Filter by name or email…"
+		aria-label="Filter users by name or email"
 		bind:value={filter}
 		class="mb-4 w-full max-w-sm rounded-md border border-border-theme bg-surface-elevated px-3 py-2 text-sm text-text-theme-primary"
 	/>
@@ -110,12 +112,12 @@
 			<table class="w-full text-sm">
 				<thead class="bg-surface-secondary text-text-theme-secondary text-left">
 					<tr>
-						<th class="px-3 py-2 font-medium">Name / Email</th>
-						<th class="px-3 py-2 font-medium">Role</th>
-						<th class="px-3 py-2 font-medium">Admin</th>
-						<th class="px-3 py-2 font-medium">Slack ID</th>
-						<th class="px-3 py-2 font-medium">Reporter</th>
-						<th class="px-3 py-2 font-medium">Joined</th>
+						<th scope="col" class="px-3 py-2 font-medium">Name / Email</th>
+						<th scope="col" class="px-3 py-2 font-medium">Role</th>
+						<th scope="col" class="px-3 py-2 font-medium">Admin</th>
+						<th scope="col" class="px-3 py-2 font-medium">Slack ID</th>
+						<th scope="col" class="px-3 py-2 font-medium">Reporter</th>
+						<th scope="col" class="px-3 py-2 font-medium">Joined</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -143,7 +145,7 @@
 									<span class="text-xs text-text-theme-secondary">{adminBadge(u)}</span>
 									<button
 										class="ml-1 text-xs underline text-interactive disabled:opacity-40"
-										disabled={busyId === u.id || !canToggleGrant(u)}
+										disabled={busyId === u.id}
 										onclick={() => toggleAdmin(u)}
 									>
 										{u.admin_granted ? 'Revoke grant' : 'Grant'}
@@ -160,6 +162,7 @@
 									<input
 										type="text"
 										list="reporter-suggestions"
+										aria-label="Slack user ID"
 										bind:value={editValue}
 										placeholder="U…"
 										class="w-36 rounded border border-border-theme bg-surface px-2 py-1 text-xs"
@@ -175,7 +178,7 @@
 										>
 									</div>
 								{:else}
-									<button class="text-left" onclick={() => startEdit(u)}>
+									<button class="text-left" aria-label="Edit Slack ID" onclick={() => startEdit(u)}>
 										<span class="font-mono text-xs text-text-theme-primary"
 											>{u.slack_user_id ?? '— link —'}</span
 										>
@@ -201,13 +204,15 @@
 								{new Date(u.created_at).toLocaleDateString()}
 							</td>
 						</tr>
+					{:else}
+						<tr><td colspan="6" class="px-3 py-6 text-center text-text-theme-tertiary">No users match.</td></tr>
 					{/each}
 				</tbody>
 			</table>
 		</div>
 
 		<datalist id="reporter-suggestions">
-			{#each reporters as r}
+			{#each reporters as r (r.slack_user_id)}
 				<option value={r.slack_user_id}>{r.name} — {r.slack_user_id} · {r.pending} pending</option>
 			{/each}
 		</datalist>
