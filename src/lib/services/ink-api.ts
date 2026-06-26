@@ -133,6 +133,33 @@ export interface InkUser {
 	verify_pending?: number;
 }
 
+// ── INK User Admin (admin-only) ──────────────────────────────────────────
+export interface AdminUserReporter {
+	slack_user_id: string | null;
+	issues_filed: number;
+	verify_pending: number;
+}
+
+export interface AdminUserRow {
+	id: string;
+	email: string;
+	name: string | null;
+	chds_role: string | null;
+	admin: boolean;
+	admin_sources: Array<'pulse_role' | 'email_allowlist' | 'granted'>;
+	admin_granted: boolean;
+	admin_granted_at: string | null;
+	admin_granted_by: string | null;
+	slack_user_id: string | null;
+	created_at: string;
+	reporter: AdminUserReporter;
+}
+
+export interface AdminUsersResponse {
+	users: AdminUserRow[];
+	reporters: VerifyReporterOption[]; // slack-id suggest directory (reused shape)
+}
+
 export interface PaginatedResponse<T> {
 	total_count: number;
 	page: number;
@@ -625,7 +652,15 @@ class InkApiClient {
 		if (!response.ok) {
 			if (response.status === 401) throw new InkApiError(401, 'NOT_AUTHENTICATED');
 			if (response.status === 403) throw new InkApiError(403, 'FORBIDDEN');
-			throw new InkApiError(response.status, `API error: ${response.status} ${response.statusText}`);
+			let detail = `API error: ${response.status} ${response.statusText}`;
+			try {
+				const data = await response.json();
+				if (data?.error) detail = data.error;
+				else if (data?.message) detail = data.message;
+			} catch {
+				/* non-JSON body — keep the default */
+			}
+			throw new InkApiError(response.status, detail);
 		}
 
 		return response.json();
@@ -741,6 +776,28 @@ class InkApiClient {
 	// it the one Slack is waiting on.
 	async resendReviewDm(id: string): Promise<{ ok: boolean }> {
 		return this.fetch(`/issues/${id}/resend_review_dm`, { method: 'POST' });
+	}
+
+	// ── User Admin (admin-only) ──────────────────────────────────────────
+	async getUsers(): Promise<AdminUsersResponse> {
+		return this.fetch('/users');
+	}
+
+	// slackUserId: a Slack U-id to link, or '' to clear. 422 on collision
+	// (error body names the current owner — surfaced via InkApiError.message).
+	async updateUserSlackId(id: string, slackUserId: string): Promise<AdminUserRow> {
+		return this.fetch(`/users/${id}`, {
+			method: 'PATCH',
+			body: JSON.stringify({ slack_user_id: slackUserId })
+		});
+	}
+
+	async grantAdmin(id: string): Promise<AdminUserRow> {
+		return this.fetch(`/users/${id}/grant_admin`, { method: 'POST' });
+	}
+
+	async revokeAdmin(id: string): Promise<AdminUserRow> {
+		return this.fetch(`/users/${id}/revoke_admin`, { method: 'POST' });
 	}
 
 	// WorkGroups — the developer queue board
