@@ -96,7 +96,7 @@
 					onclick={() => inkPrefs.set('search.mode', m.key)}
 					class="px-2.5 py-1 rounded text-xs font-medium transition-colors
 						{mode === m.key
-						? 'bg-interactive text-white shadow-sm'
+						? 'bg-interactive dark:bg-blue-700 text-white shadow-sm'
 						: 'text-text-theme-secondary hover:text-text-theme-primary'}"
 				>
 					{m.label}
@@ -234,7 +234,7 @@
 							<a
 								href={buildUrl({ page: String(pageNum) })}
 								class="px-2 py-1 rounded text-xs font-medium {pageNum === data.page
-									? 'bg-interactive text-white'
+									? 'bg-interactive dark:bg-blue-700 text-white'
 									: 'hover:bg-surface-secondary text-text-theme-secondary'}"
 							>
 								{pageNum}

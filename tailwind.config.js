@@ -4,6 +4,12 @@ export default {
 	darkMode: 'class',
 	theme: {
 		extend: {
+			// Default border color is theme-aware so a bare `border` (and the Triage
+			// `border-default` typo) respects dark mode. Tailwind's preflight default
+			// is gray-200, which leaks as a too-bright border on the dark surfaces.
+			borderColor: {
+				DEFAULT: 'var(--color-border)'
+			},
 			colors: {
 				// Theme-aware colors using CSS variables
 				primary: {

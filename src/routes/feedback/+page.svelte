@@ -466,12 +466,12 @@
 					<div class="text-xs font-medium text-text-theme-secondary mb-1">Open</div>
 					<div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{s.open}</div>
 					{#if s.investigating > 0}
-						<div class="text-xs text-amber-600 dark:text-amber-400 mt-1">{s.investigating} investigating</div>
+						<div class="text-xs text-amber-700 dark:text-amber-400 mt-1">{s.investigating} investigating</div>
 					{/if}
 				</button>
 				<button onclick={() => goToList({ status: 'resolved' })} class="bg-surface-elevated rounded-lg border border-theme border-l-2 border-l-green-500 p-3 text-left hover:bg-surface-secondary transition-colors cursor-pointer">
 					<div class="text-xs font-medium text-text-theme-secondary mb-1">Resolved</div>
-					<div class="text-2xl font-bold text-green-600 dark:text-green-400">{s.resolved}</div>
+					<div class="text-2xl font-bold text-green-700 dark:text-green-400">{s.resolved}</div>
 					<div class="text-xs text-text-theme-tertiary mt-1">{s.resolved_last_7d} this week</div>
 				</button>
 				<button onclick={() => goToList({ status: 'wont_fix' })} class="bg-surface-elevated rounded-lg border border-theme border-l-2 border-l-gray-400 dark:border-l-gray-500 p-3 text-left hover:bg-surface-secondary transition-colors cursor-pointer">
@@ -490,9 +490,9 @@
 				</button>
 				<div class="bg-surface-elevated rounded-lg border border-theme border-l-2 border-l-yellow-500 p-3">
 					<div class="text-xs font-medium text-text-theme-secondary mb-1">Awaiting Review</div>
-					<div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{s.awaiting_review}</div>
+					<div class="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{s.awaiting_review}</div>
 					{#if s.review_confirmed > 0}
-						<div class="text-xs text-green-600 dark:text-green-400 mt-1">{s.review_confirmed} confirmed</div>
+						<div class="text-xs text-green-700 dark:text-green-400 mt-1">{s.review_confirmed} confirmed</div>
 					{/if}
 				</div>
 				<div class="bg-surface-elevated rounded-lg border border-theme p-3">
@@ -754,7 +754,7 @@
 								</span>
 
 								<!-- Short-ID column (mono, promoted to its own slot so it stops competing with the title) -->
-								<code class="text-[10px] font-mono text-text-theme-tertiary bg-surface-secondary rounded px-1.5 py-0.5 tabular-nums w-fit">{issue.id}</code>
+								<code class="text-[10px] font-mono text-text-theme-secondary bg-surface-secondary rounded px-1.5 py-0.5 tabular-nums w-fit">{issue.id}</code>
 
 								<!-- Title + priority flag -->
 								<div class="flex items-center gap-1.5 min-w-0">
@@ -893,7 +893,7 @@
 											<span>Query: <code class="bg-surface-secondary px-1.5 py-0.5 rounded text-text-theme-secondary">{issue.search_query}</code></span>
 										{/if}
 										{#if issue.resolution}
-											<span class="text-green-600 dark:text-green-400">Resolution: {issue.resolution}</span>
+											<span class="text-green-700 dark:text-green-400">Resolution: {issue.resolution}</span>
 										{/if}
 										{#if issue.fixed_in_version}
 											<span>Fixed in {issue.fixed_in_version}</span>

@@ -38,11 +38,11 @@
 	function statusBadgeClass(status: string): string {
 		switch (status) {
 			case 'enabled':
-				return 'bg-success-light text-green-700';
+				return 'bg-success-light text-green-700 dark:text-green-300';
 			case 'disabled':
-				return 'bg-error-light text-red-700';
+				return 'bg-error-light text-red-700 dark:text-red-300';
 			default:
-				return 'bg-surface-secondary text-text-theme-tertiary';
+				return 'bg-surface-secondary text-text-theme-secondary';
 		}
 	}
 
@@ -72,7 +72,7 @@
 
 <div class="overflow-hidden text-xs">
 	<!-- Header -->
-	<div class="flex items-center gap-2 px-2.5 py-1.5 bg-surface-secondary border-b border-theme font-medium text-text-theme-tertiary uppercase tracking-wider" style="font-size: 0.625rem;">
+	<div class="flex items-center gap-2 px-2.5 py-1.5 bg-surface-secondary border-b border-theme font-medium text-text-theme-secondary uppercase tracking-wider" style="font-size: 0.625rem;">
 		<button
 			type="button"
 			onclick={toggleAll}

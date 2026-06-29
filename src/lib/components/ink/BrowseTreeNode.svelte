@@ -138,7 +138,7 @@
 				{#if typeof node.cached_doc_count === 'number'}
 					<span
 						class="text-[10px] tabular-nums
-						{node.cached_doc_count === 0 ? 'text-amber-600 dark:text-amber-400' : 'text-text-theme-tertiary'}"
+						{node.cached_doc_count === 0 ? 'text-amber-700 dark:text-amber-400' : 'text-text-theme-tertiary'}"
 						title={node.cached_doc_count === 0
 							? 'Zero docs match this collection — check filters or query.'
 							: `${node.cached_doc_count.toLocaleString()} docs`}

@@ -139,19 +139,19 @@
       </div>
       <div class="bg-surface-elevated rounded-lg border border-theme border-l-2 border-l-green-500 p-3">
         <div class="text-xs font-medium text-text-theme-secondary mb-1">p50 latency</div>
-        <div class="text-2xl font-bold text-green-600 dark:text-green-400">{ms(summary.p50_ms)}</div>
+        <div class="text-2xl font-bold text-green-700 dark:text-green-400">{ms(summary.p50_ms)}</div>
       </div>
       <div class="bg-surface-elevated rounded-lg border border-theme border-l-2 border-l-emerald-500 p-3">
         <div class="text-xs font-medium text-text-theme-secondary mb-1">p95 latency</div>
-        <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{ms(summary.p95_ms)}</div>
+        <div class="text-2xl font-bold text-sky-700 dark:text-sky-400">{ms(summary.p95_ms)}</div>
       </div>
       <div class="bg-surface-elevated rounded-lg border border-theme border-l-2 border-l-teal-500 p-3">
         <div class="text-xs font-medium text-text-theme-secondary mb-1">p99 latency</div>
-        <div class="text-2xl font-bold text-teal-600 dark:text-teal-400">{ms(summary.p99_ms)}</div>
+        <div class="text-2xl font-bold text-teal-700 dark:text-teal-400">{ms(summary.p99_ms)}</div>
       </div>
       <div class="bg-surface-elevated rounded-lg border border-theme border-l-2 border-l-amber-500 p-3">
         <div class="text-xs font-medium text-text-theme-secondary mb-1">Zero-result rate</div>
-        <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">{pct(summary.zero_result_rate)}</div>
+        <div class="text-2xl font-bold text-amber-700 dark:text-amber-400">{pct(summary.zero_result_rate)}</div>
         <div class="text-xs text-text-theme-tertiary mt-1">{num(summary.zero_result_count)} searches</div>
       </div>
       <div class="bg-surface-elevated rounded-lg border border-theme border-l-2 border-l-blue-500 p-3">
@@ -167,8 +167,8 @@
           <Timer size={15} class="text-text-theme-tertiary" />
           <h2 class="text-sm font-semibold text-text-theme-primary">Server latency trend</h2>
           <span class="text-xs text-text-theme-tertiary ml-auto">
-            <span class="inline-block w-2.5 h-0.5 align-middle bg-green-500"></span> p50
-            <span class="inline-block w-2.5 h-0.5 align-middle bg-emerald-600 ml-2"></span> p95
+            <span class="inline-block w-2.5 h-0.5 align-middle" style="background: var(--chart-p50)"></span> p50
+            <span class="inline-block w-2.5 h-0.5 align-middle ml-2" style="background: var(--chart-p95)"></span> p95
             <span class="ml-2">target {TARGET_MS}ms</span>
           </span>
         </div>
@@ -180,10 +180,10 @@
             {/each}
             <!-- target reference line -->
             <line x1="0" y1={targetY} x2="100" y2={targetY}
-              stroke="#f59e0b" stroke-width="0.3" stroke-dasharray="1.5 1.5" opacity="0.6" />
-            <polyline points={linePoints("p95_ms")} fill="none" stroke="#059669"
+              style="stroke: var(--chart-target)" stroke-width="0.3" stroke-dasharray="1.5 1.5" opacity="0.6" />
+            <polyline points={linePoints("p95_ms")} fill="none" style="stroke: var(--chart-p95)"
               stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
-            <polyline points={linePoints("p50_ms")} fill="none" stroke="#22c55e"
+            <polyline points={linePoints("p50_ms")} fill="none" style="stroke: var(--chart-p50)"
               stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
           </svg>
           <div class="flex justify-between text-[10px] text-text-theme-tertiary mt-1">

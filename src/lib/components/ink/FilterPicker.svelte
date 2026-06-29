@@ -241,14 +241,14 @@
 								type="button"
 								title="Match ANY of these {field} terms (OR)"
 								aria-pressed={!fieldIsAll(chips)}
-								class="px-1.5 py-[1px] {fieldIsAll(chips) ? 'text-text-theme-tertiary hover:bg-surface-secondary' : 'bg-interactive text-white'}"
+								class="px-1.5 py-[1px] {fieldIsAll(chips) ? 'text-text-theme-tertiary hover:bg-surface-secondary' : 'bg-interactive dark:bg-blue-700 text-white'}"
 								onclick={() => setFieldMode(chips.map((c) => c.id), 'any')}
 							>Any</button>
 							<button
 								type="button"
 								title="Match ALL of these {field} terms (AND)"
 								aria-pressed={fieldIsAll(chips)}
-								class="px-1.5 py-[1px] {fieldIsAll(chips) ? 'bg-interactive text-white' : 'text-text-theme-tertiary hover:bg-surface-secondary'}"
+								class="px-1.5 py-[1px] {fieldIsAll(chips) ? 'bg-interactive dark:bg-blue-700 text-white' : 'text-text-theme-tertiary hover:bg-surface-secondary'}"
 								onclick={() => setFieldMode(chips.map((c) => c.id), 'all')}
 							>All</button>
 						</div>

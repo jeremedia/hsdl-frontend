@@ -293,7 +293,7 @@
 						<a
 							href={buildUrl({ page: String(pageNum) })}
 							class="px-2 py-1 rounded text-xs font-medium {pageNum === data.page
-								? 'bg-interactive text-white'
+								? 'bg-interactive dark:bg-blue-700 text-white'
 								: 'hover:bg-surface-secondary text-text-theme-secondary'}"
 						>
 							{pageNum}

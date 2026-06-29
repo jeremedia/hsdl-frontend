@@ -313,7 +313,7 @@
 	}
 	function statusClass(s: string): string {
 		return (
-			{ deploy_ready: 'text-emerald-600', dev_review: 'text-indigo-600', needs_feedback: 'text-amber-600', resolved: 'text-slate-400' }[
+			{ deploy_ready: 'text-emerald-700 dark:text-emerald-300', dev_review: 'text-indigo-700 dark:text-indigo-400', needs_feedback: 'text-amber-700 dark:text-amber-300', resolved: 'text-slate-500 dark:text-slate-300' }[
 				s
 			] || 'text-text-theme-tertiary'
 		);
@@ -328,7 +328,7 @@
 	{@const zone = ctx ? ctx.group.full_id : INBOX}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="group/row rounded border bg-surface px-2 py-1.5 cursor-pointer hover:bg-surface-secondary
+		class="group/row rounded border bg-surface-elevated px-2 py-1.5 cursor-pointer hover:bg-surface-secondary
 			{selectedId === issue.full_id ? 'ring-1 ring-inset ring-chds-blue' : 'border-default'}
 			{dragIssueId === issue.full_id ? 'opacity-40' : ''}
 			{dropHint?.zone === zone && dropHint?.beforeIssueId === issue.full_id ? 'border-t-2 border-t-chds-blue' : ''}"
@@ -514,7 +514,7 @@
 									<!-- bin = append drop target -->
 									<!-- svelte-ignore a11y_no_static_element_interactions -->
 									<div
-										class="rounded border bg-surface {group.status === 'parked' ? 'opacity-60' : ''} {dropHint?.zone === group.full_id ? 'border-chds-blue ring-1 ring-chds-blue' : 'border-default'}"
+										class="rounded border bg-surface-elevated {group.status === 'parked' ? 'opacity-60' : ''} {dropHint?.zone === group.full_id ? 'border-chds-blue ring-1 ring-chds-blue' : 'border-default'}"
 										ondragover={(e) => overZone(e, group.full_id)}
 										ondrop={(e) => dropToGroup(e, group, null)}
 									>

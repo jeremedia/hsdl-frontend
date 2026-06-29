@@ -99,7 +99,7 @@
 						>
 							{#if c.locked}<Lock size={10} class="inline mr-1 opacity-60" />{/if}
 							{c.name}
-							{#if c.active}<span class="ml-1 text-green-600 dark:text-green-400 text-[10px] font-bold uppercase tracking-wider">Live</span>{/if}
+							{#if c.active}<span class="ml-1 text-green-700 dark:text-green-400 text-[10px] font-bold uppercase tracking-wider">Live</span>{/if}
 						</button>
 					{/each}
 				</div>
@@ -123,9 +123,9 @@
 					{#if configDetail.locked}
 						<span class="text-amber-600 font-medium flex items-center gap-1 text-[11px]"><Lock size={11} /> Locked</span>
 					{:else if configDetail.active}
-						<span class="text-green-600 font-medium flex items-center gap-1 text-[11px]"><Check size={11} /> Live</span>
+						<span class="text-green-700 dark:text-green-400 font-medium flex items-center gap-1 text-[11px]"><Check size={11} /> Live</span>
 					{:else}
-						<button onclick={() => onActivate(configDetail.id)} class="text-green-600 hover:text-green-700 font-medium flex items-center gap-1 text-[11px] transition-colors">
+						<button onclick={() => onActivate(configDetail.id)} class="text-green-700 dark:text-green-400 hover:text-green-700 font-medium flex items-center gap-1 text-[11px] transition-colors">
 							<Zap size={11} /> Activate
 						</button>
 					{/if}

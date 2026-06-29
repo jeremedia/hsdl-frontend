@@ -665,7 +665,7 @@
                   </div>
                   <button
                     type="button"
-                    class="text-[11px] text-red-600 hover:text-red-700 disabled:opacity-50"
+                    class="text-[11px] text-red-700 dark:text-red-400 hover:text-red-800 disabled:opacity-50"
                     disabled={config.locked ||
                       publisherTierEntries().length <= 1}
                     onclick={() => removePublisherTier(tierKey)}

@@ -85,13 +85,13 @@
 	--color-interactive-active: #014a82;
 
 	/* Gray Scale */
-	--color-gray-50: #f7f7f7;
+	--color-gray-50: #ececec; /* page bg -- darkened from #f7f7f7 so white cards/panels separate (~1.19:1 vs #fff) -- 045493a2 light */
 	--color-gray-100: #e5e5e5;
 	--color-gray-200: #cccccc;
 	--color-gray-300: #b3b3b3;
 	--color-gray-400: #999999;
-	--color-gray-500: #808080;
-	--color-gray-600: #666666;
+	--color-gray-500: #686868; /* text-tertiary -- darkened from #808080 (was 3.95:1, fails) to clear 4.5:1 on white + the #ececec page bg -- 045493a2 light */
+	--color-gray-600: #595959; /* text-secondary -- darkened from #666666 to stay below tertiary with margin -- 045493a2 light */
 	--color-gray-700: #4d4d4d;
 	--color-gray-800: #333333;
 	--color-gray-900: #2a2a2a;
@@ -117,6 +117,12 @@
 	--color-border-strong: var(--color-accent-600);
 	--color-divider: var(--color-gray-200);
 
+	/* Performance-chart line colors -- theme-aware so the SVG strokes pass on the
+	   light page bg (graphic/3:1); dark overrides below. Distinct hues. -- 045493a2 light */
+	--chart-p50: #16a34a; /* green-600 */
+	--chart-p95: #0284c7; /* sky-600 */
+	--chart-target: #d97706; /* amber-600 */
+
 	/* Interactive States */
 	--color-link: var(--color-interactive);
 	--color-link-hover: var(--color-interactive-hover);
@@ -128,9 +134,9 @@
 	--color-header-accent: var(--color-accent-500);
 
 	/* Status Colors */
-	--color-success: #6b9d3f;
+	--color-success: #4e7d2e; /* darkened from #6b9d3f so text-success clears 4.5:1 on white (was 3.23) -- 045493a2 light */
 	--color-success-light: #e8f5e0;
-	--color-error: #ef4444;
+	--color-error: #dc2626; /* darkened from #ef4444 so text-error clears 4.5:1 on white (was 3.76) -- 045493a2 light */
 	--color-error-light: #fee2e2;
 	--color-warning: #fed402;
 	--color-warning-light: #fef9c3;
@@ -157,7 +163,7 @@
 :root.dark {
 	/* Surface Colors - Dark Mode */
 	--color-surface: #0f172a;
-	--color-surface-elevated: #1e293b;
+	--color-surface-elevated: #26334a; /* lifted one step (~1.4:1 vs body) so cards separate -- 045493a2 */
 	--color-surface-secondary: #334155;
 	--color-surface-overlay: #1e293b;
 	/* Halfway between the elevated card (#1e293b) and the previous
@@ -165,13 +171,20 @@
 	   input swallowing the page-bg contrast (Jeremy 2026-05-15). */
 	--color-input-bg: #152030;
 
-	/* Primary Colors - Inverted for dark mode (lighter blues for headings) */
-	--color-primary-100: #f0f7ff;
+	/* Primary Colors - dark mode. primary-100 is used as the SELECTED/active
+	   BACKGROUND (bg-primary-100 text-primary-700), so in dark mode it must be a
+	   DARK blue, not the near-white #f0f7ff it used to be -- that near-white was the
+	   "too bright" patch and collapsed hovered-row text to ~1:1 (045493a2). The
+	   paired text token primary-700 is therefore LIGHT here. text-primary-100 is
+	   unused, so darkening 100 is safe. */
+	--color-primary-50: #16293f;
+	--color-primary-100: #1e3a5f;
 	--color-primary-200: #e0efff;
 	--color-primary-300: #c7e0ff;
 	--color-primary-400: #93c5fd;
 	--color-primary-500: #60a5fa;
 	--color-primary-600: #3b82f6;
+	--color-primary-700: #bfdbfe;
 
 	/* Text Colors - Dark Mode */
 	--color-text-primary: #f1f5f9;
@@ -209,6 +222,11 @@
 	--color-warning-light: #78350f;
 	--color-info: #60a5fa;
 	--color-info-light: #1e3a5f;
+
+	/* Performance-chart line colors -- dark (the original bright hues, good on the dark card) -- 045493a2 */
+	--chart-p50: #4ade80; /* green-400 */
+	--chart-p95: #38bdf8; /* sky-400 */
+	--chart-target: #f59e0b; /* amber-500 */
 }
 
 /* =============================================================================
@@ -492,6 +510,17 @@
 
 	.btn-primary:hover {
 		background-color: var(--color-interactive-hover);
+	}
+
+	/* Dark mode: deepen the primary button so white labels clear AA. The base
+	   --color-interactive (#60a5fa) gives only 2.54:1 with white; button-scoped so
+	   it does NOT darken --color-interactive link text (045493a2, Jeremy's call). */
+	:root.dark .btn-primary {
+		background-color: #1d4ed8;
+	}
+
+	:root.dark .btn-primary:hover {
+		background-color: #2563eb;
 	}
 
 	.btn-secondary {

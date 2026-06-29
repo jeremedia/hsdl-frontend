@@ -138,7 +138,7 @@
 						</div>
 						<div class="flex justify-between text-[0.65rem] text-text-theme-tertiary">
 							<span class="tabular-nums">{formatNumber(cov.count)} / {formatNumber(cov.total)}</span>
-							<span class="font-semibold tabular-nums {cov.pct >= 90 ? 'text-green-600' : cov.pct < 10 ? 'text-red-500' : ''}">{cov.pct}%</span>
+							<span class="font-semibold tabular-nums {cov.pct >= 90 ? 'text-green-700 dark:text-green-300' : cov.pct < 10 ? 'text-red-600 dark:text-red-400' : ''}">{cov.pct}%</span>
 						</div>
 					</div>
 				{/each}

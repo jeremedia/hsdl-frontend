@@ -161,7 +161,7 @@
 							<Icon size={14} />
 							{item.label}
 							{#if item.label === 'Verify' && (user?.verify_pending ?? 0) > 0}
-								<span class="text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full bg-interactive text-white tabular-nums">{user?.verify_pending}</span>
+								<span class="text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full bg-interactive dark:bg-blue-700 text-white tabular-nums">{user?.verify_pending}</span>
 							{/if}
 						</a>
 					{/each}
@@ -229,7 +229,7 @@
 							<Icon size={16} />
 							{item.label}
 							{#if item.label === 'Verify' && (user?.verify_pending ?? 0) > 0}
-								<span class="text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full bg-interactive text-white tabular-nums">{user?.verify_pending}</span>
+								<span class="text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded-full bg-interactive dark:bg-blue-700 text-white tabular-nums">{user?.verify_pending}</span>
 							{/if}
 						</a>
 					{/each}
