@@ -236,6 +236,11 @@
         queryKey: ["ink", "search_config", selectedId],
       });
       queryClient.invalidateQueries({ queryKey: ["ink", "search_configs"] });
+      // The save just wrote an audit row — refresh the history panel so it
+      // shows without a reload (reviewer-agent friction note, 4b256426).
+      queryClient.invalidateQueries({
+        queryKey: ["ink", "search_config_changes", selectedId],
+      });
       showSaveToast("Configuration saved", "success");
     },
     onError: (err: Error) => {
