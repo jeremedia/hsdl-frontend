@@ -59,46 +59,75 @@ export interface SearchConfigSummary {
 	activated_at: string | null;
 }
 
+export interface SearchConfigHybridParams {
+	rrf_k: number;
+	title_boost_weight: number;
+	subject_boost_weight: number;
+	creator_boost_weight?: number;
+	phrase_title_boost_weight: number;
+	publisher_authority_weight: number;
+	publisher_name_boost_weight?: number;
+	publisher_name_min_docs?: number;
+	publisher_name_max_terms?: number;
+	recency_boost_weight: number;
+	recency_decay_rate: number;
+	fetch_size_multiplier: number;
+	constant_pool_enabled?: boolean;
+	candidate_pool_size?: number;
+	hybrid_counts_v2_enabled?: boolean;
+	creator_surname_match_enabled?: boolean;
+	creator_surname_max_authorities?: number;
+	creator_surname_max_corpus_freq?: number;
+	question_interpret_enabled?: boolean;
+	question_interpret_model?: string;
+	question_interpret_timeout_ms?: number;
+	question_interpret_apply_year_range?: boolean;
+	series_collapse_enabled: boolean;
+	edition_collapse_enabled?: boolean;
+	bm25_enabled?: boolean;
+	semantic_search_enabled?: boolean;
+	i3p_unified?: boolean;
+	nl_quorum_fallback_enabled?: boolean;
+	nl_quorum_fraction?: number;
+	nl_quorum_and_threshold?: number;
+	nl_quorum_min_lexemes?: number;
+	nl_quorum_max_lexemes?: number;
+	lists_boost_weight: number;
+	tab_section_boost_weight: number;
+	publisher_authority_tiers?: Record<string, { weight: number; publishers: string[] }>;
+	quality_banner_threshold: number;
+	semantic_similarity_threshold: number;
+}
+
 export interface SearchConfigDetail extends SearchConfigSummary {
-	field_boosts: Record<string, number>;
 	synonyms: Record<string, string[]>;
 	synonym_count: number;
 	excluded_terms: string[];
 	excluded_patterns: string[];
-	defaults: Record<string, unknown>;
-	prefix_matching: Record<string, unknown>;
-	hybrid_params: {
-		rrf_k: number;
-		title_boost_weight: number;
-		subject_boost_weight: number;
-		phrase_title_boost_weight: number;
-		publisher_authority_weight: number;
-		publisher_name_boost_weight?: number;
-		publisher_name_min_docs?: number;
-		publisher_name_max_terms?: number;
-		recency_boost_weight: number;
-		recency_decay_rate: number;
-		fetch_size_multiplier: number;
-		constant_pool_enabled?: boolean;
-		candidate_pool_size?: number;
-		hybrid_counts_v2_enabled?: boolean;
-		creator_surname_match_enabled?: boolean;
-		creator_surname_max_authorities?: number;
-		creator_surname_max_corpus_freq?: number;
-		question_interpret_enabled?: boolean;
-		question_interpret_model?: string;
-		question_interpret_timeout_ms?: number;
-		question_interpret_apply_year_range?: boolean;
-		series_collapse_enabled: boolean;
-		bm25_enabled?: boolean;
-		semantic_search_enabled?: boolean;
-		lists_boost_weight: number;
-		tab_section_boost_weight: number;
-		publisher_authority_tiers?: Record<string, { weight: number; publishers: string[] }>;
-		quality_banner_threshold: number;
-		semantic_similarity_threshold: number;
-	};
+	// Resolved (defaults merged in) — what search actually runs with.
+	hybrid_params: SearchConfigHybridParams;
+	// Raw sparse stored hash: only keys staff explicitly overrode. Saves are
+	// built from THIS base so untouched knobs keep tracking code defaults
+	// (issue 6130e255).
+	hybrid_params_overrides: Partial<SearchConfigHybridParams>;
 	notes: string | null;
+}
+
+export interface SearchConfigChange {
+	id: string;
+	created_at: string;
+	user: string | null;
+	changed_fields: string[];
+	previous_values: Record<string, unknown>;
+}
+
+export interface PreviewFilters {
+	year_start?: number | string;
+	year_end?: number | string;
+	thesis?: string;
+	terms?: string[];
+	all_terms?: string[];
+	not_terms?: string[];
 }
 
 export interface PreviewResult {
@@ -1061,8 +1090,12 @@ class InkApiClient {
 		return this.fetch(`/search_configs/${id}/activate`, { method: 'POST' });
 	}
 
-	async previewSearch(data: { query: string; config_id?: string; config?: Partial<SearchConfigDetail> }): Promise<PreviewResponse> {
+	async previewSearch(data: { query: string; config_id?: string; config?: Partial<SearchConfigDetail>; filters?: PreviewFilters }): Promise<PreviewResponse> {
 		return this.fetch('/search_configs/preview', { method: 'POST', body: JSON.stringify(data) });
+	}
+
+	async getSearchConfigChanges(id: string): Promise<SearchConfigChange[]> {
+		return this.fetch(`/search_configs/${id}/changes`);
 	}
 
 	// Browse Editor

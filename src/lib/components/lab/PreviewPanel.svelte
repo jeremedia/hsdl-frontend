@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { Search } from 'lucide-svelte';
+	import { Search, SlidersHorizontal } from 'lucide-svelte';
 	import type { PreviewResponse } from '$lib/services/ink-api';
+	import FilterPicker from '$lib/components/ink/FilterPicker.svelte';
 
 	let {
 		previewQuery,
@@ -12,7 +13,15 @@
 		previewError,
 		autoPreviewPending = false,
 		activeConfigName = '',
-		comparisonConfigName = ''
+		comparisonConfigName = '',
+		termFilters = {},
+		onTermFiltersChange = () => {},
+		yearStart = '',
+		yearEnd = '',
+		thesis = '',
+		onYearStartChange = () => {},
+		onYearEndChange = () => {},
+		onThesisChange = () => {}
 	}: {
 		previewQuery: string;
 		onQueryChange: (query: string) => void;
@@ -24,7 +33,26 @@
 		autoPreviewPending?: boolean;
 		activeConfigName?: string;
 		comparisonConfigName?: string;
+		// Preview filters (issue 7cd8f5b6) — term buckets shaped for
+		// FilterPicker ({ terms: [], all_terms: [] }) plus year/thesis.
+		termFilters?: Record<string, unknown>;
+		onTermFiltersChange?: (next: Record<string, unknown>) => void;
+		yearStart?: string;
+		yearEnd?: string;
+		thesis?: string;
+		onYearStartChange?: (v: string) => void;
+		onYearEndChange?: (v: string) => void;
+		onThesisChange?: (v: string) => void;
 	} = $props();
+
+	let activeFilterCount = $derived(
+		((termFilters.terms as string[] | undefined)?.length ?? 0) +
+			((termFilters.all_terms as string[] | undefined)?.length ?? 0) +
+			(yearStart.trim() ? 1 : 0) +
+			(yearEnd.trim() ? 1 : 0) +
+			(thesis ? 1 : 0)
+	);
+	let filtersOpen = $state(false);
 </script>
 
 <div class="card overflow-hidden">
@@ -54,7 +82,59 @@
 			>
 				{#if previewing}Running...{:else}Preview{/if}
 			</button>
+			<button
+				onclick={() => (filtersOpen = !filtersOpen)}
+				class="btn btn-outline text-xs py-1.5 px-2.5 {activeFilterCount > 0 ? 'ring-1 ring-interactive/40' : ''}"
+				aria-expanded={filtersOpen}
+				title="Preview filters"
+			>
+				<SlidersHorizontal size={13} />
+				{#if activeFilterCount > 0}<span class="ml-1 tabular-nums">{activeFilterCount}</span>{/if}
+			</button>
 		</div>
+
+		{#if filtersOpen}
+			<!-- Preview filters: term filters run the term-filtered code paths
+			     (keyword-only, exact counts, strict boost-drop) — a very
+			     different ranking regime than unfiltered search. -->
+			<div class="mt-2.5 rounded-lg border border-theme bg-surface-secondary/40 p-3 space-y-3">
+				<div class="grid grid-cols-3 gap-2">
+					<label class="block">
+						<span class="text-[10px] font-medium text-text-theme-tertiary uppercase tracking-wider">Year from</span>
+						<input
+							type="number"
+							value={yearStart}
+							oninput={(e) => onYearStartChange((e.target as HTMLInputElement).value)}
+							class="input text-xs py-1 w-full mt-0.5"
+							placeholder="e.g. 2015"
+						/>
+					</label>
+					<label class="block">
+						<span class="text-[10px] font-medium text-text-theme-tertiary uppercase tracking-wider">Year to</span>
+						<input
+							type="number"
+							value={yearEnd}
+							oninput={(e) => onYearEndChange((e.target as HTMLInputElement).value)}
+							class="input text-xs py-1 w-full mt-0.5"
+							placeholder="e.g. 2024"
+						/>
+					</label>
+					<label class="block">
+						<span class="text-[10px] font-medium text-text-theme-tertiary uppercase tracking-wider">Theses</span>
+						<select
+							value={thesis}
+							onchange={(e) => onThesisChange((e.target as HTMLSelectElement).value)}
+							class="input text-xs py-1 w-full mt-0.5"
+						>
+							<option value="">All documents</option>
+							<option value="thesis">Theses only</option>
+							<option value="chds">CHDS theses only</option>
+						</select>
+					</label>
+				</div>
+				<FilterPicker filters={termFilters} onchange={onTermFiltersChange} />
+			</div>
+		{/if}
 	</div>
 
 	{#if activePreview && experimentalPreview}

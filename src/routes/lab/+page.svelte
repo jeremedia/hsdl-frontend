@@ -18,7 +18,10 @@
   import ParameterToggle from "$lib/components/lab/ParameterToggle.svelte";
   import SynonymEditor from "$lib/components/lab/SynonymEditor.svelte";
   import ExcludedTermEditor from "$lib/components/lab/ExcludedTermEditor.svelte";
+  import ExcludedPatternEditor from "$lib/components/lab/ExcludedPatternEditor.svelte";
+  import ChangeHistory from "$lib/components/lab/ChangeHistory.svelte";
   import PreviewPanel from "$lib/components/lab/PreviewPanel.svelte";
+  import type { PreviewFilters } from "$lib/services/ink-api";
 
   const queryClient = useQueryClient();
   type PublisherTier = { weight: number; publishers: string[] };
@@ -60,12 +63,14 @@
   let dirtyHybrid = $state<Record<string, unknown>>({});
   let dirtySynonyms = $state<Record<string, string[]> | null>(null);
   let dirtyExcluded = $state<string[] | null>(null);
+  let dirtyPatterns = $state<string[] | null>(null);
   let publisherTierInputs = $state<Record<string, string>>({});
 
   let isDirty = $derived(
     Object.keys(dirtyHybrid).length > 0 ||
       dirtySynonyms !== null ||
-      dirtyExcluded !== null,
+      dirtyExcluded !== null ||
+      dirtyPatterns !== null,
   );
 
   function hp(
@@ -81,6 +86,10 @@
 
   function currentExcluded(): string[] {
     return dirtyExcluded ?? config?.excluded_terms ?? [];
+  }
+
+  function currentPatterns(): string[] {
+    return dirtyPatterns ?? config?.excluded_patterns ?? [];
   }
 
   function currentPublisherTiers(): PublisherTiers {
@@ -175,6 +184,7 @@
     dirtyHybrid = {};
     dirtySynonyms = null;
     dirtyExcluded = null;
+    dirtyPatterns = null;
     publisherTierInputs = {};
   }
 
@@ -186,8 +196,16 @@
   }
 
   let recencyActive = $derived((hp("recency_boost_weight") as number) > 0);
+  let publisherNameActive = $derived(
+    (hp("publisher_name_boost_weight") as number) > 0,
+  );
+  let nlQuorumActive = $derived(
+    (hp("nl_quorum_fallback_enabled") as boolean) ?? true,
+  );
   let synCount = $derived(Object.keys(currentSynonyms()).length);
-  let excludedCount = $derived(currentExcluded().length);
+  let excludedCount = $derived(
+    currentExcluded().length + currentPatterns().length,
+  );
 
   // --- Mutations ---
   const saveMutation = createMutation({
@@ -195,13 +213,18 @@
       if (!selectedId) return;
       const data: Record<string, unknown> = {};
       if (Object.keys(dirtyHybrid).length > 0) {
+        // Sparse base (issue 6130e255): merge dirty keys over the RAW stored
+        // overrides, never the resolved hash — writing resolved values froze
+        // every code default into the config at save time. The server also
+        // compacts default-equal keys as a backstop.
         data.hybrid_params = {
-          ...(config?.hybrid_params || {}),
+          ...(config?.hybrid_params_overrides || {}),
           ...dirtyHybrid,
         };
       }
       if (dirtySynonyms !== null) data.synonyms = dirtySynonyms;
       if (dirtyExcluded !== null) data.excluded_terms = dirtyExcluded;
+      if (dirtyPatterns !== null) data.excluded_patterns = dirtyPatterns;
       return inkApi.updateSearchConfig(
         selectedId,
         data as Partial<SearchConfigDetail>,
@@ -225,6 +248,12 @@
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ink", "search_configs"] });
       queryClient.invalidateQueries({ queryKey: ["ink", "search_config"] });
+      queryClient.invalidateQueries({
+        queryKey: ["ink", "search_config_changes"],
+      });
+      // The active baseline changed — force the next preview to re-run it.
+      lastBaselineKey = null;
+      if (previewQuery.trim()) runPreview();
     },
   });
 
@@ -289,6 +318,39 @@
   let autoPreviewPending = $state(false);
   let previewGeneration = 0;
 
+  // Preview filters (issue 7cd8f5b6): lets staff preview the term-filtered
+  // code paths (exact-count, strict boost-drop), which rank very differently
+  // from unfiltered search. Term buckets live in an object shaped for
+  // FilterPicker; year/thesis are simple fields alongside.
+  let previewTermFilters = $state<Record<string, unknown>>({});
+  let previewYearStart = $state("");
+  let previewYearEnd = $state("");
+  let previewThesis = $state("");
+
+  function buildPreviewFilters(): PreviewFilters | undefined {
+    const f: PreviewFilters = {};
+    const terms = previewTermFilters.terms as string[] | undefined;
+    const allTerms = previewTermFilters.all_terms as string[] | undefined;
+    if (terms?.length) f.terms = terms;
+    if (allTerms?.length) f.all_terms = allTerms;
+    if (previewYearStart.trim()) f.year_start = previewYearStart.trim();
+    if (previewYearEnd.trim()) f.year_end = previewYearEnd.trim();
+    if (previewThesis) f.thesis = previewThesis;
+    return Object.keys(f).length > 0 ? f : undefined;
+  }
+
+  // Baseline cache (issue 7cd8f5b6): the active-config leg only depends on
+  // (query, filters, which config is active) — not on dirty tuning state —
+  // so debounced auto-previews during a tuning session re-run ONLY the
+  // experimental leg. Invalidated by activateMutation.
+  let lastBaselineKey = $state<string | null>(null);
+
+  function baselineKey(filters: PreviewFilters | undefined): string {
+    const activeId =
+      $configsQuery.data?.find((c) => c.active)?.id ?? "unknown";
+    return JSON.stringify({ q: previewQuery, f: filters ?? null, a: activeId });
+  }
+
   async function runPreview() {
     if (!previewQuery.trim()) return;
     const gen = ++previewGeneration;
@@ -298,6 +360,8 @@
       // Build config override for experimental call only
       const configOverride: Record<string, unknown> = {};
       if (Object.keys(dirtyHybrid).length > 0) {
+        // Resolved base is correct here: the override is a transient preview
+        // config, never persisted, so materialized values are harmless.
         configOverride.hybrid_params = {
           ...(config?.hybrid_params || {}),
           ...dirtyHybrid,
@@ -305,29 +369,43 @@
       }
       if (dirtySynonyms !== null) configOverride.synonyms = dirtySynonyms;
       if (dirtyExcluded !== null) configOverride.excluded_terms = dirtyExcluded;
+      if (dirtyPatterns !== null)
+        configOverride.excluded_patterns = dirtyPatterns;
+
+      const filters = buildPreviewFilters();
+      const key = baselineKey(filters);
+      const baselineFresh = lastBaselineKey === key && activePreview !== null;
+
+      const experimentalCall = inkApi.previewSearch({
+        query: previewQuery,
+        config_id: selectedId || undefined,
+        config:
+          Object.keys(configOverride).length > 0
+            ? (configOverride as Partial<SearchConfigDetail>)
+            : undefined,
+        filters,
+      });
+      // Active baseline: NO overrides. Skipped when nothing it depends on
+      // changed since the last run.
+      const activeCall = baselineFresh
+        ? Promise.resolve(activePreview!)
+        : inkApi.previewSearch({ query: previewQuery, filters });
 
       const [active, experimental] = await Promise.all([
-        // Active baseline: NO overrides
-        inkApi.previewSearch({ query: previewQuery }),
-        // Experimental: selected config + dirty overrides
-        inkApi.previewSearch({
-          query: previewQuery,
-          config_id: selectedId || undefined,
-          config:
-            Object.keys(configOverride).length > 0
-              ? (configOverride as Partial<SearchConfigDetail>)
-              : undefined,
-        }),
+        activeCall,
+        experimentalCall,
       ]);
       if (gen !== previewGeneration) return; // discard stale response
       activePreview = active;
       experimentalPreview = experimental;
+      lastBaselineKey = key;
     } catch (e: unknown) {
       if (gen !== previewGeneration) return;
       const msg = e instanceof Error ? e.message : String(e);
       previewError = `Preview failed: ${msg}. Try again.`;
       activePreview = null;
       experimentalPreview = null;
+      lastBaselineKey = null;
     } finally {
       if (gen === previewGeneration) previewing = false;
     }
@@ -344,8 +422,37 @@
 
   // Auto-preview debounce
   let dirtyFingerprint = $derived(
-    JSON.stringify({ h: dirtyHybrid, s: dirtySynonyms, e: dirtyExcluded }),
+    JSON.stringify({
+      h: dirtyHybrid,
+      s: dirtySynonyms,
+      e: dirtyExcluded,
+      p: dirtyPatterns,
+    }),
   );
+
+  // Filter changes re-run the preview even with a clean config — filters
+  // affect both legs (and bust the baseline cache via the key).
+  let filtersFingerprint = $derived(
+    JSON.stringify({
+      t: previewTermFilters,
+      ys: previewYearStart,
+      ye: previewYearEnd,
+      th: previewThesis,
+    }),
+  );
+  let prevFiltersFp: string | null = null;
+  $effect(() => {
+    const fp = filtersFingerprint;
+    if (prevFiltersFp === null) {
+      prevFiltersFp = fp;
+      return;
+    }
+    if (fp === prevFiltersFp) return;
+    prevFiltersFp = fp;
+    if (!previewQuery.trim()) return;
+    const timer = setTimeout(() => runPreview(), 400);
+    return () => clearTimeout(timer);
+  });
 
   $effect(() => {
     const _fp = dirtyFingerprint;
@@ -413,6 +520,14 @@
 
   function handleRemoveExcluded(term: string) {
     dirtyExcluded = currentExcluded().filter((t) => t !== term);
+  }
+
+  function handleAddPattern(pattern: string) {
+    dirtyPatterns = [...currentPatterns(), pattern];
+  }
+
+  function handleRemovePattern(pattern: string) {
+    dirtyPatterns = currentPatterns().filter((p) => p !== pattern);
   }
 </script>
 
@@ -566,6 +681,21 @@
             (dirtyHybrid = { ...dirtyHybrid, subject_boost_weight: v })}
         />
         <ParameterSlider
+          label="Author Name Boost"
+          paramKey="creator_boost_weight"
+          value={(hp("creator_boost_weight") as number) ?? 2.0}
+          min={0}
+          max={5}
+          step={0.1}
+          description="Extra weight when the query contains an author's full name from the Creator vocabulary."
+          detailedDescription="Author names live only in the Creator controlled vocabulary — not in titles or descriptions — so this signal is the only way an 'author + topic' query ('Daisy Garza immigration') can surface that author's work. Default 2.0 is deliberately stronger than the other flat boosts: for author+topic queries the keyword leg returns nothing (no document contains both the name and the topic words), so the author signal must be decisive. Verified: prolific authors' off-topic backlists do not dominate topical queries. Also drives the bare-surname path gated by Surname Author Match below."
+          scaleLabels={["0 (off)", "2.0 (default)", "5.0 (strong)"]}
+          disabled={config.locked}
+          formatValue={(v) => v.toFixed(1)}
+          oninput={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, creator_boost_weight: v })}
+        />
+        <ParameterSlider
           label="Phrase Title Boost"
           paramKey="phrase_title_boost_weight"
           value={(hp("phrase_title_boost_weight") as number) ?? 2.0}
@@ -610,6 +740,36 @@
           oninput={(v) =>
             (dirtyHybrid = { ...dirtyHybrid, publisher_name_boost_weight: v })}
         />
+        {#if publisherNameActive}
+          <ParameterSlider
+            label="Publisher Match Doc-Count Floor"
+            paramKey="publisher_name_min_docs"
+            value={(hp("publisher_name_min_docs") as number) ?? 500}
+            min={0}
+            max={10000}
+            step={100}
+            description="A matched publisher must have at least this many visible documents for the Publisher Name Match to fire."
+            detailedDescription="A confident publisher reference points at a high-volume publisher (CRS ~24K visible docs) — the whole reason the recall gap exists. The floor rejects incidentally same-named small orgs ('Homeland Security Group' ~77 docs) that would otherwise hijack the boost. 0 disables the floor."
+            scaleLabels={["0 (off)", "500 (default)", "10000 (strict)"]}
+            disabled={config.locked}
+            oninput={(v) =>
+              (dirtyHybrid = { ...dirtyHybrid, publisher_name_min_docs: v })}
+          />
+          <ParameterSlider
+            label="Publisher Match Term Cap"
+            paramKey="publisher_name_max_terms"
+            value={(hp("publisher_name_max_terms") as number) ?? 25}
+            min={1}
+            max={50}
+            step={1}
+            description="Maximum candidate Publisher terms weighed when detecting a publisher name in the query."
+            detailedDescription="Candidates are ordered shortest-name first so a parent org ('...Federal Emergency Management Agency') is captured ahead of its many longer sub-org variants within the cap. The single highest-volume match becomes the canonical publisher; the rest are ignored."
+            scaleLabels={["1 (strict)", "25 (default)", "50 (loose)"]}
+            disabled={config.locked}
+            oninput={(v) =>
+              (dirtyHybrid = { ...dirtyHybrid, publisher_name_max_terms: v })}
+          />
+        {/if}
         <div
           class="rounded-lg border border-theme bg-theme-secondary/40 p-3 space-y-3"
         >
@@ -920,6 +1080,15 @@
           onchange={(v) => (dirtyHybrid = { ...dirtyHybrid, bm25_enabled: v })}
         />
         <ParameterToggle
+          label="Unified Publisher/Creator (I3P)"
+          paramKey="i3p_unified"
+          value={(hp("i3p_unified") as boolean) ?? false}
+          description="Fold the I3P parallel vocabulary into the canonical Publisher/Creator surfaces (hide I3P fields from facets and autosuggest)."
+          detailedDescription="The 2024 I3P bulk import created I3P_Publisher/I3P_Creator fields parallel to the canonical ones. When ON, the I3P fields are hidden from search surfaces so backfilled canonical terms don't appear twice (issue f2b5b592). Only flip this ON in an environment where the canonical backfill task has completed — before that, turning it on hides the only copy of those terms. Reversible."
+          disabled={config.locked}
+          onchange={(v) => (dirtyHybrid = { ...dirtyHybrid, i3p_unified: v })}
+        />
+        <ParameterToggle
           label="Series Collapse"
           paramKey="series_collapse_enabled"
           value={(hp("series_collapse_enabled") as boolean) ?? false}
@@ -971,6 +1140,78 @@
         />
       </AccordionSection>
 
+      <AccordionSection title="Natural-Language Fallback" open={false}>
+        <ParameterToggle
+          label="Verbose Query Fallback"
+          paramKey="nl_quorum_fallback_enabled"
+          value={(hp("nl_quorum_fallback_enabled") as boolean) ?? true}
+          description="When a wordy natural-language query matches almost nothing, retry it requiring only most of the words instead of all of them."
+          detailedDescription="Keyword search requires EVERY word to match, so a verbose question ('how can communities best prepare for wildfire evacuations?') collapses to ~1 keyword hit and ranking degenerates to a flat semantic tie. When ON, a bag-of-words query with enough content words and near-zero all-words recall is rebuilt as a 'match most of the words' quorum, restoring a real keyword signal without the precision loss of matching any single word. Terse, quoted, and boolean queries are untouched (issues 498c6a2f / 8dbfd536 / a6cca405). OFF for instant rollback."
+          disabled={config.locked}
+          onchange={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, nl_quorum_fallback_enabled: v })}
+        />
+        {#if nlQuorumActive}
+          <ParameterSlider
+            label="Quorum Fraction"
+            paramKey="nl_quorum_fraction"
+            value={(hp("nl_quorum_fraction") as number) ?? 0.6}
+            min={0.1}
+            max={1.0}
+            step={0.05}
+            description="Fraction of the query's content words a document must match under the fallback."
+            detailedDescription="At 0.6 (default), a 5-word question needs 3 words to match. 1.0 is equivalent to the normal all-words search (fallback does nothing); very low values approach match-any and lose precision."
+            scaleLabels={["0.1 (loose)", "0.6 (default)", "1.0 (strict)"]}
+            disabled={config.locked}
+            formatValue={(v) => v.toFixed(2)}
+            oninput={(v) =>
+              (dirtyHybrid = { ...dirtyHybrid, nl_quorum_fraction: v })}
+          />
+          <ParameterSlider
+            label="Trigger Threshold"
+            paramKey="nl_quorum_and_threshold"
+            value={(hp("nl_quorum_and_threshold") as number) ?? 5}
+            min={1}
+            max={50}
+            step={1}
+            description="The fallback fires only when the normal all-words search finds fewer than this many documents."
+            detailedDescription="A cheap recall probe runs the normal AND query first. Below this many hits, the query is considered collapsed and the quorum rebuild kicks in. Higher values fire the fallback more often (even when the strict search found a few real matches); 1 fires only on total misses."
+            scaleLabels={["1 (rare)", "5 (default)", "50 (eager)"]}
+            disabled={config.locked}
+            oninput={(v) =>
+              (dirtyHybrid = { ...dirtyHybrid, nl_quorum_and_threshold: v })}
+          />
+          <ParameterSlider
+            label="Minimum Content Words"
+            paramKey="nl_quorum_min_lexemes"
+            value={(hp("nl_quorum_min_lexemes") as number) ?? 3}
+            min={1}
+            max={20}
+            step={1}
+            description="The query must have at least this many content words (after removing stopwords) to qualify for the fallback."
+            detailedDescription="Keeps short precise queries on the strict path — a 2-word query that matches nothing should show nothing rather than loosen itself. Content words are counted after stemming and stopword removal, the same lexing PostgreSQL uses for matching."
+            scaleLabels={["1 (any)", "3 (default)", "20 (long only)"]}
+            disabled={config.locked}
+            oninput={(v) =>
+              (dirtyHybrid = { ...dirtyHybrid, nl_quorum_min_lexemes: v })}
+          />
+          <ParameterSlider
+            label="Maximum Content Words"
+            paramKey="nl_quorum_max_lexemes"
+            value={(hp("nl_quorum_max_lexemes") as number) ?? 12}
+            min={1}
+            max={30}
+            step={1}
+            description="Cap on how many content words the quorum expands — protects against pasted full titles timing out."
+            detailedDescription="A pasted document title can yield 25-30 content words; without a cap the quorum builds a corpus-wide scan that times out (issue cd56192a). The LEADING words are kept — verbose title and name lookups front-load their distinctive terms, while trailing boilerplate (dates, session numbers) is the noise and the cost."
+            scaleLabels={["1", "12 (default)", "30 (loose)"]}
+            disabled={config.locked}
+            oninput={(v) =>
+              (dirtyHybrid = { ...dirtyHybrid, nl_quorum_max_lexemes: v })}
+          />
+        {/if}
+      </AccordionSection>
+
       <AccordionSection
         title="Language Rules"
         badge={synCount + excludedCount}
@@ -989,6 +1230,17 @@
           onAdd={handleAddExcluded}
           onRemove={handleRemoveExcluded}
         />
+        <div class="border-t border-theme my-4"></div>
+        <ExcludedPatternEditor
+          patterns={currentPatterns()}
+          disabled={config.locked}
+          onAdd={handleAddPattern}
+          onRemove={handleRemovePattern}
+        />
+      </AccordionSection>
+
+      <AccordionSection title="Change History" open={false}>
+        <ChangeHistory configId={config.id} />
       </AccordionSection>
     {:else if $detailQuery.isPending && selectedId}
       <div class="card p-4">
@@ -1021,6 +1273,14 @@
       {autoPreviewPending}
       activeConfigName={$configsQuery.data?.find((c) => c.active)?.name ?? ""}
       comparisonConfigName={config?.name ?? ""}
+      termFilters={previewTermFilters}
+      onTermFiltersChange={(next) => (previewTermFilters = next)}
+      yearStart={previewYearStart}
+      yearEnd={previewYearEnd}
+      thesis={previewThesis}
+      onYearStartChange={(v) => (previewYearStart = v)}
+      onYearEndChange={(v) => (previewYearEnd = v)}
+      onThesisChange={(v) => (previewThesis = v)}
     />
   </div>
 </div>
