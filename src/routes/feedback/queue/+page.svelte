@@ -313,7 +313,7 @@
 	}
 	function statusClass(s: string): string {
 		return (
-			{ deploy_ready: 'text-emerald-700 dark:text-emerald-300', dev_review: 'text-indigo-700 dark:text-indigo-400', needs_feedback: 'text-amber-700 dark:text-amber-300', resolved: 'text-slate-500 dark:text-slate-300' }[
+			{ deploy_ready: 'text-emerald-700 dark:text-emerald-300', dev_review: 'text-indigo-700 dark:text-indigo-400', in_development: 'text-sky-700 dark:text-sky-300', needs_feedback: 'text-amber-700 dark:text-amber-300', resolved: 'text-slate-500 dark:text-slate-300' }[
 				s
 			] || 'text-text-theme-tertiary'
 		);

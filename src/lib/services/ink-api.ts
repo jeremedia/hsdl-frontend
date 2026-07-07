@@ -269,7 +269,10 @@ export interface FeedbackSummary {
 	total: number;
 	open: number;
 	investigating: number;
+	in_development: number;
 	needs_feedback: number;
+	dev_review: number;
+	deploy_ready: number;
 	resolved: number;
 	wont_fix: number;
 	duplicate: number;

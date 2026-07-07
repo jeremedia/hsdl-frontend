@@ -172,6 +172,7 @@
 		switch (status) {
 			case 'open': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
 			case 'investigating': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+			case 'in_development': return 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300';
 			case 'needs_feedback': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300';
 			case 'dev_review': return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300';
 			case 'deploy_ready': return 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300';
@@ -185,6 +186,7 @@
 		switch (status) {
 			case 'open': return 'Open';
 			case 'investigating': return 'Investigating';
+			case 'in_development': return 'In Development';
 			case 'needs_feedback': return 'Needs Feedback';
 			case 'dev_review': return 'Dev Review';
 			case 'deploy_ready': return 'Deploy Ready';
@@ -588,6 +590,7 @@
 				<option value="">All statuses</option>
 				<option value="open">Open</option>
 				<option value="investigating">Investigating</option>
+				<option value="in_development">In Development</option>
 				<option value="needs_feedback">Needs Feedback</option>
 				<option value="dev_review">Dev Review</option>
 				<option value="deploy_ready">Deploy Ready</option>
