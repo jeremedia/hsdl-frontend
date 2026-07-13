@@ -72,6 +72,7 @@ export interface SearchConfigHybridParams {
 	recency_boost_weight: number;
 	recency_decay_rate: number;
 	fetch_size_multiplier: number;
+	bm25_kw_fetch_multiplier?: number;
 	constant_pool_enabled?: boolean;
 	candidate_pool_size?: number;
 	hybrid_counts_v2_enabled?: boolean;

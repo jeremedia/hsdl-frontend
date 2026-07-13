@@ -1002,6 +1002,20 @@
           oninput={(v) =>
             (dirtyHybrid = { ...dirtyHybrid, candidate_pool_size: v })}
         />
+        <ParameterSlider
+          label="Keyword Candidate Window"
+          paramKey="bm25_kw_fetch_multiplier"
+          value={(hp("bm25_kw_fetch_multiplier") as number) ?? 1}
+          min={1}
+          max={10}
+          step={1}
+          description="How far past the candidate pool the BM25 keyword scan reaches before trimming (window = pool x this, floor 500)."
+          detailedDescription="The BM25 index scan fetches a wider candidate window than the pool, then trims to pool size for RRF fusion. Under pg_textsearch <=1.1.0 this had to be 5x because the engine's top-k optimization (Block-Max WAND) dropped valid candidates at small windows. Measured on v1.3.1 (2026-07-12): a 500-row window returns candidate sets identical to a 2000-row window across the whole bench suite, so 1 is the calibrated default. Raise only if keyword recall regresses after a pg_textsearch upgrade — wider windows cost keyword-leg latency."
+          scaleLabels={["1 (calibrated)", "5 (pre-1.3.1)", "10 (paranoid)"]}
+          disabled={config.locked}
+          oninput={(v) =>
+            (dirtyHybrid = { ...dirtyHybrid, bm25_kw_fetch_multiplier: v })}
+        />
         <ParameterToggle
           label="Coherent Counts (v2)"
           paramKey="hybrid_counts_v2_enabled"
