@@ -190,6 +190,13 @@ export interface AdminUsersResponse {
 	reporters: VerifyReporterOption[]; // slack-id suggest directory (reused shape)
 }
 
+// Outcome of the bulk email→Slack-id lookup over all unlinked accounts.
+export interface SlackIdLookupResult {
+	linked: Array<{ email: string; slack_user_id: string }>;
+	not_found: string[]; // emails with no Slack account
+	errors: Array<{ email: string; error: string }>;
+}
+
 export interface PaginatedResponse<T> {
 	total_count: number;
 	page: number;
@@ -823,6 +830,12 @@ class InkApiClient {
 			method: 'PATCH',
 			body: JSON.stringify({ slack_user_id: slackUserId })
 		});
+	}
+
+	// Bulk: for every account without a Slack id, ask Slack for the id behind
+	// its email (users.lookupByEmail) and link what it finds.
+	async lookupSlackIds(): Promise<SlackIdLookupResult> {
+		return this.fetch('/users/lookup_slack_ids', { method: 'POST' });
 	}
 
 	async grantAdmin(id: string): Promise<AdminUserRow> {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { inkApi, type AdminUserRow } from '$lib/services/ink-api';
-	import { ShieldCheck, Shield, AlertCircle } from 'lucide-svelte';
+	import { inkApi, type AdminUserRow, type SlackIdLookupResult } from '$lib/services/ink-api';
+	import { ShieldCheck, Shield, AlertCircle, Search } from 'lucide-svelte';
 
 	const queryClient = useQueryClient();
 
@@ -15,6 +15,9 @@
 	let editValue = $state('');
 	let rowError = $state<{ id: string; message: string } | null>(null);
 	let busyId = $state<string | null>(null);
+	let lookupRunning = $state(false);
+	let lookupResult = $state<SlackIdLookupResult | null>(null);
+	let lookupError = $state<string | null>(null);
 
 	let rows = $derived.by(() => {
 		const data = $usersQuery.data?.users ?? [];
@@ -83,6 +86,20 @@
 		if (!u.admin) return 'No';
 		return u.admin_sources.map((s) => ADMIN_SOURCE_LABELS[s] ?? s).join(', ');
 	}
+
+	async function lookupMissing() {
+		lookupRunning = true;
+		lookupResult = null;
+		lookupError = null;
+		try {
+			lookupResult = await inkApi.lookupSlackIds();
+			await queryClient.invalidateQueries({ queryKey: ['ink-users'] });
+		} catch (err: unknown) {
+			lookupError = err instanceof Error ? err.message : 'Lookup failed';
+		} finally {
+			lookupRunning = false;
+		}
+	}
 </script>
 
 <div class="p-6 max-w-6xl mx-auto">
@@ -93,13 +110,45 @@
 		</p>
 	</header>
 
-	<input
-		type="text"
-		placeholder="Filter by name or email…"
-		aria-label="Filter users by name or email"
-		bind:value={filter}
-		class="mb-4 w-full max-w-sm rounded-md border border-border-theme bg-surface-elevated px-3 py-2 text-sm text-text-theme-primary"
-	/>
+	<div class="mb-4 flex flex-wrap items-center gap-3">
+		<input
+			type="text"
+			placeholder="Filter by name or email…"
+			aria-label="Filter users by name or email"
+			bind:value={filter}
+			class="w-full max-w-sm rounded-md border border-border-theme bg-surface-elevated px-3 py-2 text-sm text-text-theme-primary"
+		/>
+		<button
+			class="inline-flex items-center gap-1.5 rounded-md border border-border-theme bg-surface-elevated px-3 py-2 text-sm text-interactive disabled:opacity-40"
+			disabled={lookupRunning}
+			title="For every account without a Slack ID, ask Slack for the account behind its email"
+			onclick={lookupMissing}
+		>
+			<Search class="h-4 w-4" />
+			{lookupRunning ? 'Looking up…' : 'Look up missing IDs via Slack'}
+		</button>
+	</div>
+
+	{#if lookupError}
+		<p class="mb-3 flex items-center gap-2 text-sm text-red-600">
+			<AlertCircle class="h-4 w-4" />
+			{lookupError}
+		</p>
+	{:else if lookupResult}
+		<div class="mb-3 rounded-md border border-border-theme bg-surface-secondary px-3 py-2 text-xs text-text-theme-secondary">
+			<span class="font-medium text-text-theme-primary">
+				Linked {lookupResult.linked.length}{lookupResult.linked.length > 0
+					? `: ${lookupResult.linked.map((l) => l.email).join(', ')}`
+					: ''}
+			</span>
+			{#if lookupResult.not_found.length > 0}
+				· no Slack account for {lookupResult.not_found.join(', ')}
+			{/if}
+			{#each lookupResult.errors as e (e.email)}
+				<div class="mt-0.5 text-red-600">{e.email}: {e.error}</div>
+			{/each}
+		</div>
+	{/if}
 
 	{#if $usersQuery.isPending}
 		<p class="text-text-theme-secondary">Loading users…</p>
@@ -108,7 +157,7 @@
 			<AlertCircle class="w-4 h-4" /> Failed to load users.
 		</p>
 	{:else}
-		<div class="overflow-x-auto rounded-lg border border-border-theme">
+		<div class="overflow-x-auto rounded-lg border border-border-theme bg-surface-elevated">
 			<table class="w-full text-sm">
 				<thead class="bg-surface-secondary text-text-theme-secondary text-left">
 					<tr>
@@ -285,6 +334,10 @@
 					</li>
 					<li>Edit any account's Slack-ID linkage.</li>
 					<li>
+						Run <em>Look up missing IDs via Slack</em> — for every unlinked account, asks Slack
+						for the account behind its email and links what it finds.
+					</li>
+					<li>
 						Grant or revoke the durable admin flag. You can't revoke your own admin (no
 						self-lockout).
 					</li>
@@ -300,6 +353,10 @@
 					<li>
 						Granting admin to someone already admin via Pulse/email pins it durably (it survives
 						a future Pulse role change) — harmless if otherwise redundant.
+					</li>
+					<li>
+						New accounts get one automatic email→Slack lookup at creation, so most users
+						self-link; the button above is the backstop for anyone that missed.
 					</li>
 				</ul>
 			</section>
