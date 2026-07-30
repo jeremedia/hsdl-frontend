@@ -188,6 +188,17 @@
 				<span class="text-text-theme-primary font-medium">Reject</span> (with a note) to send it back.
 				You can do this here or reply to the Slack DMs — both work.
 			</p>
+			<!-- Same queue, walked in place on the public site: /review/queue is a
+			     computed review list served by the review panel (same verdict
+			     chokepoints as this page, so the two surfaces stay coherent). -->
+			<a
+				href="/review/queue"
+				target="_blank"
+				rel="noopener"
+				class="mt-2 inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded border border-border bg-surface-theme-secondary text-text-theme-primary hover:border-interactive hover:text-interactive transition-colors"
+			>
+				<ExternalLink size={13} /> Review in place on the site
+			</a>
 		</div>
 		<a
 			href="{base}/feedback"
