@@ -279,15 +279,18 @@ The API must expose the `x-runtime` header via CORS for performance timing.
 Session-cookie auth via CHDS Pulse OAuth (no JWTs). SPA and API share the same origin on staging and production.
 
 ```typescript
-// All API calls must include credentials for session cookies
-fetch('/api/spa/v1/auth/me', { credentials: 'include' })
+// Bootstrap auth is always 200; inspect the discriminated response body.
+fetch('/api/spa/v1/auth/session', { credentials: 'include' })
 ```
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/spa/v1/auth/me` | GET | Current user profile or 401 |
+| `/api/spa/v1/auth/session` | GET | `no-store` `{ authenticated, user }` session union (anonymous is 200) |
+| `/api/spa/v1/auth/me` | GET | Compatibility current-user profile or 401 |
 | `/api/spa/v1/auth/login` | GET | Returns OAuth URL for redirect |
 | `/api/spa/v1/auth/session` | DELETE | Logout |
+
+Cookie-mode sign-in delegates to `/users/auth/chds_pulse` as a full-page redirect with a sanitized application-relative `origin`; the OAuth callback applies the same boundary before redirecting back.
 
 ## Common Tasks
 
