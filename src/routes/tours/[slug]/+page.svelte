@@ -125,6 +125,9 @@
 				</select>
 			</div>
 			<button class="btn btn-primary" onclick={saveMeta}>Save</button>
+			<p class="col-span-4 text-xs text-text-theme-muted">
+				Edits reach visitors within about 5 minutes (the tour API is publicly cached).
+			</p>
 		</div>
 
 		<div class="card divide-y divide-border-theme">
