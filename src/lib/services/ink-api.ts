@@ -1173,6 +1173,181 @@ class InkApiClient {
 		});
 		if (!response.ok) throw new InkApiError(response.status, `Delete failed: ${response.statusText}`);
 	}
+
+	// ── Site tours authoring (SiteFeature stop registry + kind:"tour" reviews) ──
+	// Stop verbs return the FULL recomputed tour (the move_issue contract):
+	// replace local state wholesale from the response.
+
+	async listTourStops(filters: { status?: string; q?: string } = {}): Promise<InkTourStop[]> {
+		const p = new URLSearchParams();
+		if (filters.status) p.set('status', filters.status);
+		if (filters.q) p.set('q', filters.q);
+		const qs = p.toString();
+		const res = await this.fetch<{ site_features: InkTourStop[] }>(
+			`/site_features${qs ? '?' + qs : ''}`
+		);
+		return res.site_features ?? [];
+	}
+
+	async createTourStop(payload: TourStopPayload): Promise<InkTourStop> {
+		const res = await this.fetch<{ site_feature: InkTourStop }>('/site_features', {
+			method: 'POST',
+			body: JSON.stringify({ site_feature: payload })
+		});
+		return res.site_feature;
+	}
+
+	async updateTourStop(key: string, payload: Partial<TourStopPayload>): Promise<InkTourStop> {
+		const res = await this.fetch<{ site_feature: InkTourStop }>(`/site_features/${key}`, {
+			method: 'PATCH',
+			body: JSON.stringify({ site_feature: payload })
+		});
+		return res.site_feature;
+	}
+
+	async listTours(): Promise<InkTourSummary[]> {
+		const res = await this.fetch<{ tours: InkTourSummary[] }>('/tours');
+		return res.tours ?? [];
+	}
+
+	async getTour(slug: string): Promise<InkTour> {
+		const res = await this.fetch<{ tour: InkTour }>(`/tours/${slug}`);
+		return res.tour;
+	}
+
+	async createTour(payload: { name: string; slug: string; description?: string }): Promise<InkTour> {
+		const res = await this.fetch<{ tour: InkTour }>('/tours', {
+			method: 'POST',
+			body: JSON.stringify({ tour: payload })
+		});
+		return res.tour;
+	}
+
+	async updateTour(
+		slug: string,
+		payload: Partial<{ name: string; slug: string; description: string; status: string }>
+	): Promise<InkTour> {
+		const res = await this.fetch<{ tour: InkTour }>(`/tours/${slug}`, {
+			method: 'PATCH',
+			body: JSON.stringify({ tour: payload })
+		});
+		return res.tour;
+	}
+
+	async deleteTour(slug: string): Promise<void> {
+		await this.fetch<{ deleted: boolean }>(`/tours/${slug}`, { method: 'DELETE' });
+	}
+
+	async addTourStop(slug: string, featureKey: string, position?: number): Promise<InkTour> {
+		const body: Record<string, unknown> = { feature_key: featureKey };
+		if (position !== undefined) body.position = position;
+		const res = await this.fetch<{ tour: InkTour }>(`/tours/${slug}/add_stop`, {
+			method: 'POST',
+			body: JSON.stringify(body)
+		});
+		return res.tour;
+	}
+
+	/** position is 1-BASED (the `positioned` gem's contract). */
+	async moveTourStop(slug: string, featureKey: string, position: number): Promise<InkTour> {
+		const res = await this.fetch<{ tour: InkTour }>(`/tours/${slug}/move_stop`, {
+			method: 'POST',
+			body: JSON.stringify({ feature_key: featureKey, position })
+		});
+		return res.tour;
+	}
+
+	async removeTourStop(slug: string, featureKey: string): Promise<InkTour> {
+		const res = await this.fetch<{ tour: InkTour }>(`/tours/${slug}/remove_stop`, {
+			method: 'POST',
+			body: JSON.stringify({ feature_key: featureKey })
+		});
+		return res.tour;
+	}
+
+	/** Per-tour overrides; a blank string clears that override. Only supplied keys change. */
+	async updateTourStopOverrides(
+		slug: string,
+		featureKey: string,
+		overrides: Partial<{ title: string; note: string; url: string }>
+	): Promise<InkTour> {
+		const res = await this.fetch<{ tour: InkTour }>(`/tours/${slug}/update_stop`, {
+			method: 'PATCH',
+			body: JSON.stringify({ feature_key: featureKey, ...overrides })
+		});
+		return res.tour;
+	}
+}
+
+// ── Site tours types ──────────────────────────────────────────────────────────
+export interface InkTourStop {
+	id: string;
+	key: string;
+	name: string;
+	description: string | null;
+	area: string | null;
+	url: string | null;
+	spotlight_key: string | null;
+	behavior_key: string | null;
+	status: 'active' | 'retired';
+	updated_at: string;
+	used_by: { slug: string; name: string; kind: string; status: string }[];
+}
+
+export interface TourStopPayload {
+	key: string;
+	name: string;
+	description?: string;
+	area?: string;
+	url?: string;
+	spotlight_key?: string;
+	behavior_key?: string;
+	status?: string;
+}
+
+export interface InkTourSummary {
+	slug: string;
+	name: string;
+	description: string | null;
+	status: 'draft' | 'open' | 'closed';
+	stop_count: number;
+	updated_at: string;
+}
+
+export interface InkTour extends InkTourSummary {
+	stops: InkTourStopInTour[];
+}
+
+export interface InkTourStopInTour {
+	feature_key: string;
+	name: string;
+	description: string | null;
+	title: string | null;
+	note: string | null;
+	url: string | null;
+	display_title: string;
+	display_note: string | null;
+	display_url: string | null;
+	spotlight_key: string | null;
+	behavior_key: string | null;
+	feature_status: 'active' | 'retired';
+}
+
+/** The target/behavior vocabulary published by the hsdl-next build (same
+ *  origin) — feeds the spotlight/behavior pickers and the stale-target chip. */
+export interface TourTargetsDoc {
+	targets: { key: string; label: string; selector: string; fallback?: string }[];
+	behaviors: { key: string; label: string }[];
+}
+
+export async function fetchTourTargets(): Promise<TourTargetsDoc | null> {
+	try {
+		const res = await fetch('/tour-targets.json', { credentials: 'omit' });
+		if (!res.ok) return null;
+		return (await res.json()) as TourTargetsDoc;
+	} catch {
+		return null;
+	}
 }
 
 // Search performance dashboard types (SearchMetrics#dashboard)
