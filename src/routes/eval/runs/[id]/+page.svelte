@@ -237,6 +237,7 @@
 					{#if $runQuery.data.completed_at}
 						 -- {formatDate($runQuery.data.completed_at)}
 					{/if}
+					 -- Config: {$runQuery.data.search_config_name || 'Active at run time'}
 				</p>
 			</div>
 			<div class="flex items-center gap-2 flex-shrink-0">

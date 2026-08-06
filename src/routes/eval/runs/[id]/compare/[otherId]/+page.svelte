@@ -71,11 +71,15 @@
 				<div class="text-xs text-text-theme-tertiary uppercase tracking-wider mb-1">Run A</div>
 				<div class="text-sm font-semibold">{data.run_a.label || 'Untitled'}</div>
 				<div class="text-xs text-text-theme-tertiary mt-0.5">{data.run_a.completed_at ? new Date(data.run_a.completed_at).toLocaleDateString() : '--'}</div>
+				<!-- Config attribution (issue d9ccae23): a compare is meaningless
+				     without knowing which configuration produced each side. -->
+				<div class="text-xs mt-0.5">Config: <span class="font-medium">{data.run_a.search_config_name || 'Active at run time'}</span></div>
 			</div>
 			<div class="card p-3">
 				<div class="text-xs text-text-theme-tertiary uppercase tracking-wider mb-1">Run B</div>
 				<div class="text-sm font-semibold">{data.run_b.label || 'Untitled'}</div>
 				<div class="text-xs text-text-theme-tertiary mt-0.5">{data.run_b.completed_at ? new Date(data.run_b.completed_at).toLocaleDateString() : '--'}</div>
+				<div class="text-xs mt-0.5">Config: <span class="font-medium">{data.run_b.search_config_name || 'Active at run time'}</span></div>
 			</div>
 		</div>
 
