@@ -104,6 +104,10 @@ export interface SearchConfigDetail extends SearchConfigSummary {
 	synonyms: Record<string, string[]>;
 	synonym_count: number;
 	excluded_terms: string[];
+	// Always-on classification-marking exclusions (FOUO etc). Served
+	// separately so the editor renders them non-removable and never posts
+	// them back into the stored list (issue 77f780c0).
+	built_in_excluded_terms: string[];
 	excluded_patterns: string[];
 	// Resolved (defaults merged in) — what search actually runs with.
 	hybrid_params: SearchConfigHybridParams;

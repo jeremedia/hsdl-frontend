@@ -1245,6 +1245,7 @@
         <div class="border-t border-theme my-4"></div>
         <ExcludedTermEditor
           terms={currentExcluded()}
+          builtInTerms={config.built_in_excluded_terms ?? []}
           disabled={config.locked}
           onAdd={handleAddExcluded}
           onRemove={handleRemoveExcluded}
