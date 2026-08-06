@@ -120,9 +120,17 @@
 						/>
 					</form>
 				{:else}
+					<!-- Locked and Live/Activate are INDEPENDENT (issue e2312822).
+					     Lock guards CONTENT (edit/delete, matching the server's
+					     update/destroy checks); activation switches which config is
+					     live and mutates nothing. The old if-else chain hid Activate
+					     on locked configs, making the locked 'default' impossible to
+					     activate from the Lab (revert-to-defaults) while the API
+					     allowed it — the badge and the action now coexist. -->
 					{#if configDetail.locked}
 						<span class="text-amber-600 font-medium flex items-center gap-1 text-[11px]"><Lock size={11} /> Locked</span>
-					{:else if configDetail.active}
+					{/if}
+					{#if configDetail.active}
 						<span class="text-green-700 dark:text-green-400 font-medium flex items-center gap-1 text-[11px]"><Check size={11} /> Live</span>
 					{:else}
 						<button onclick={() => onActivate(configDetail.id)} class="text-green-700 dark:text-green-400 hover:text-green-700 font-medium flex items-center gap-1 text-[11px] transition-colors">
