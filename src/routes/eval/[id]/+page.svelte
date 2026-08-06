@@ -35,6 +35,14 @@
 	// Run creation
 	let runLabel = $state('');
 	let running = $state(false);
+	// Config picker (issue e698a309): golden runs previously always executed
+	// against the ACTIVE config, so evaluating a draft meant activating it.
+	// '' = active config (the default the executor falls back to).
+	let runConfigId = $state('');
+	const configsQuery = createQuery({
+		queryKey: ['ink', 'search_configs'],
+		queryFn: () => inkApi.getSearchConfigs()
+	});
 
 	// CSV import
 	let showImport = $state(false);
@@ -94,7 +102,7 @@
 	async function handleRun() {
 		running = true;
 		try {
-			const run = await inkApi.createGoldenRun(setId, runLabel.trim() || undefined);
+			const run = await inkApi.createGoldenRun(setId, runLabel.trim() || undefined, runConfigId || undefined);
 			runLabel = '';
 			queryClient.invalidateQueries({ queryKey: ['ink', 'golden_set', setId] });
 			goto(`${base}/eval/runs/${run.id}`);
@@ -289,6 +297,17 @@
 			<!-- Run Now form -->
 			<div class="px-4 py-2 border-b border-theme flex gap-2 items-center">
 				<input type="text" bind:value={runLabel} placeholder="Run label (optional)" class="input text-xs py-1 flex-1" />
+				<select
+					bind:value={runConfigId}
+					class="input text-xs py-1 flex-shrink-0 max-w-56"
+					aria-label="Search configuration for this run"
+					title="Which search configuration the run executes against"
+				>
+					<option value="">Active config</option>
+					{#each $configsQuery.data ?? [] as cfg (cfg.id)}
+						<option value={cfg.id}>{cfg.name}{cfg.active ? ' (active)' : ''}{cfg.locked ? ' 🔒' : ''}</option>
+					{/each}
+				</select>
 				<button onclick={handleRun} disabled={running || data.queries.length === 0} class="btn btn-primary text-xs py-1 px-3 flex-shrink-0">
 					<Play size={12} />
 					{running ? 'Running...' : 'Run Now'}

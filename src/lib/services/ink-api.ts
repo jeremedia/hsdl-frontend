@@ -516,6 +516,8 @@ export interface GoldenQueryRunSummary {
 	no_strong_matches_count: number;
 	started_at: string | null;
 	completed_at: string | null;
+	search_config_id: string | null;
+	search_config_name: string | null;
 }
 
 export interface GoldenQueryRunDetail extends GoldenQueryRunSummary {
@@ -1050,8 +1052,13 @@ class InkApiClient {
 		await this.fetch(`/golden_sets/${setId}/queries/${queryId}`, { method: 'DELETE' });
 	}
 
-	async createGoldenRun(setId: string, label?: string): Promise<GoldenQueryRunDetail> {
-		return this.fetch(`/golden_sets/${setId}/runs`, { method: 'POST', body: JSON.stringify({ label }) });
+	async createGoldenRun(setId: string, label?: string, searchConfigurationId?: string): Promise<GoldenQueryRunDetail> {
+		// searchConfigurationId lets a run execute against a DRAFT config
+		// without activating it (issue e698a309); omitted = active config.
+		return this.fetch(`/golden_sets/${setId}/runs`, {
+			method: 'POST',
+			body: JSON.stringify({ label, search_configuration_id: searchConfigurationId })
+		});
 	}
 
 	async getGoldenRuns(setId: string): Promise<GoldenQueryRunSummary[]> {
