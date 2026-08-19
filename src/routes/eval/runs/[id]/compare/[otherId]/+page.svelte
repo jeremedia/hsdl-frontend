@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import { createQuery } from '@tanstack/svelte-query';
 	import { derived } from 'svelte/store';
-	import { inkApi } from '$lib/services/ink-api';
+	import { inkApi, type MetricDelta } from '$lib/services/ink-api';
 	import { ArrowLeft, TrendingUp, TrendingDown, Minus } from 'lucide-svelte';
 
 	const compareQuery = createQuery(
@@ -32,6 +32,17 @@
 		const pct = (delta * 100).toFixed(1);
 		return delta > 0 ? `+${pct}%` : `${pct}%`;
 	}
+
+	// Split the mixed `deltas` payload here rather than in the template: a
+	// `{#if key !== 'failure_shifts'}` guard does not narrow the value's type
+	// across an {#each} tuple, so the template cannot know `d` is a MetricDelta.
+	const metricRows = derived(compareQuery, ($q) => {
+		const deltas = $q.data?.deltas ?? {};
+		return Object.entries(deltas).filter(
+			(entry): entry is [string, MetricDelta] =>
+				entry[0] !== 'failure_shifts' && !Array.isArray(entry[1]) && entry[1] !== undefined
+		);
+	});
 
 	const METRIC_LABELS: Record<string, string> = {
 		ndcg_at_15: 'NDCG@15',
@@ -89,8 +100,8 @@
 				<h2 class="text-xs font-semibold text-text-theme-tertiary uppercase tracking-wider">Aggregate Metrics</h2>
 			</div>
 			<div class="divide-y divide-theme">
-				{#each Object.entries(data.deltas) as [key, d]}
-					{#if key !== 'failure_shifts' && METRIC_LABELS[key]}
+				{#each $metricRows as [key, d]}
+					{#if METRIC_LABELS[key]}
 						<div class="flex items-center px-4 py-2 text-xs">
 							<span class="w-32 text-text-theme-secondary font-medium">{METRIC_LABELS[key]}</span>
 							<span class="w-20 text-right tabular-nums">{formatMetric(d.a)}</span>

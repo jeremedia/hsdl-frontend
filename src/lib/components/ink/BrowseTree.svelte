@@ -9,10 +9,11 @@
 
 	import BrowseTreeNode from './BrowseTreeNode.svelte';
 	import { createBrowseTreeState } from '$lib/composables/useBrowseTreeState.svelte';
-	import type { InkBrowseNode } from '$lib/services/ink-api';
+	import type {
+		BrowseTreeNodeShape as TreeNode,
+		BrowseTreeBucket as TreeBucket
+	} from '$lib/services/ink-api';
 
-	type TreeNode = InkBrowseNode & { childList: TreeNode[] };
-	type TreeBucket = { label: string; nodes: TreeNode[] };
 
 	let {
 		buckets,

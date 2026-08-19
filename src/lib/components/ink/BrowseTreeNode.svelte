@@ -9,10 +9,9 @@
 	// component just needs to render and report.
 
 	import { Folder, FolderTree, Box, FileText, ChevronRight, ChevronDown } from 'lucide-svelte';
-	import type { InkBrowseNode } from '$lib/services/ink-api';
+	import type { BrowseTreeNodeShape as TreeNode } from '$lib/services/ink-api';
 	import type { BrowseTreeState } from '$lib/composables/useBrowseTreeState.svelte';
 
-	type TreeNode = InkBrowseNode & { childList: TreeNode[] };
 
 	let {
 		node,

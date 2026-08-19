@@ -14,7 +14,10 @@
 		type TourTargetsDoc
 	} from '$lib/services/ink-api';
 
-	const slug = $derived($page.params.slug);
+	// Typed routes give params.slug as string | undefined. This route only
+	// renders for a matched [slug], so normalise once here rather than
+	// asserting at each of the five API call sites below.
+	const slug = $derived($page.params.slug ?? '');
 
 	let tour = $state<InkTour | null>(null);
 	let registry = $state<InkTourStop[]>([]);

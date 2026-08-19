@@ -288,6 +288,16 @@ export interface FeedbackSummary {
 	resolved: number;
 	wont_fix: number;
 	duplicate: number;
+	deferred: number;
+	by_subproject: Record<string, number>;
+	/**
+	 * reporter_review_status counts. These move INDEPENDENTLY of `status` — an
+	 * issue can be resolved AND awaiting the reporter's sign-off at the same
+	 * time, and INK's "Awaiting Review" badge reflects these, not status.
+	 */
+	awaiting_review: number;
+	review_confirmed: number;
+	review_rejected: number;
 	resolution_rate: number;
 	resolved_last_7d: number;
 	avg_resolution_days: number | null;
@@ -547,10 +557,45 @@ export interface GoldenQuerySetDetail {
 	created_at: string;
 }
 
+/**
+ * Browse tree shapes, shared by BrowseTree and BrowseTreeNode.
+ *
+ * These were declared identically in BOTH components. Beyond the duplication,
+ * svelte2tsx hoists the $props() type annotation above the instance script, so a
+ * type declared next to the component could not be referenced from its own props
+ * annotation ("Cannot find name 'TreeBucket'"). Shared module, imported type.
+ */
+export type BrowseTreeNodeShape = InkBrowseNode & { childList: BrowseTreeNodeShape[] };
+export type BrowseTreeBucket = { label: string; nodes: BrowseTreeNodeShape[] };
+
+export interface MetricDelta {
+	a: number;
+	b: number;
+	delta: number;
+}
+
+export interface FailureShift {
+	flag: string;
+	a: number;
+	b: number;
+	delta: number;
+}
+
 export interface GoldenRunComparison {
 	run_a: GoldenQueryRunSummary;
 	run_b: GoldenQueryRunSummary;
-	deltas: Record<string, { a: number; b: number; delta: number }>;
+	/**
+	 * Deliberately mixed, matching golden_runs_controller.rb#compute_deltas: each
+	 * aggregate metric key maps to a MetricDelta, and `failure_shifts` maps to an
+	 * ARRAY. A metric is omitted entirely when either run lacks it (`next unless
+	 * a_val && b_val`), which is why the metric side is a partial record.
+	 *
+	 * This was typed as Record<string, MetricDelta>, which claimed failure_shifts
+	 * was an object and made the page's own iteration over it a type error.
+	 */
+	deltas: Partial<Record<string, MetricDelta | FailureShift[]>> & {
+		failure_shifts?: FailureShift[];
+	};
 	per_query: Array<{ query_id: string; query_text: string; ndcg_a: number; ndcg_b: number; delta: number }>;
 }
 
@@ -597,6 +642,19 @@ export interface InkBrowseNode {
 	placement: Record<string, unknown>;
 	visibility: BrowseNodeVisibility;
 	parent_ids: string[];
+	/**
+	 * Parent EDGES, present on the detail payload (browse_nodes_controller.rb:495).
+	 * Distinct from parent_ids: each entry carries the edge's own `position`,
+	 * which is what PositionPicker reads back after a move. Optional because the
+	 * summary serializer omits it.
+	 */
+	parents?: Array<{
+		id: string;
+		slug: string;
+		name: string;
+		kind: BrowseNodeKind;
+		position: number;
+	}>;
 	position?: number | null;
 	children?: BrowseNodeChild[];
 	created_at?: string;

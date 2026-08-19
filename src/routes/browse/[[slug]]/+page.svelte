@@ -15,6 +15,7 @@
   } from "$lib/services/ink-api";
   import { Check, Plus, Trash2, AlertCircle } from "lucide-svelte";
   import { page } from "$app/stores";
+  import { base } from "$app/paths";
   import { goto } from "$app/navigation";
   import FilterPicker from "$lib/components/ink/FilterPicker.svelte";
   import PlacementPicker from "$lib/components/ink/PlacementPicker.svelte";
@@ -222,8 +223,8 @@
       creatingNew = false;
       queryClient.invalidateQueries({ queryKey: ["ink", "browse_nodes"] });
       // Drop the slug from the URL on delete.
-      if ($page.url.pathname !== "/ink/browse") {
-        void goto("/ink/browse", { replaceState: true, keepFocus: true, noScroll: true });
+      if ($page.url.pathname !== `${base}/browse`) {
+        void goto(`${base}/browse`, { replaceState: true, keepFocus: true, noScroll: true });
       }
       showToast("Browse node deleted", "success");
     },
@@ -416,8 +417,8 @@
     // Clear the slug from the URL — "new" is a no-slug state. The
     // URL flips to the new slug after a successful save (see the
     // save mutation's onSuccess).
-    if ($page.url.pathname !== "/ink/browse") {
-      void goto("/ink/browse", { replaceState: true, keepFocus: true, noScroll: true });
+    if ($page.url.pathname !== `${base}/browse`) {
+      void goto(`${base}/browse`, { replaceState: true, keepFocus: true, noScroll: true });
     }
   }
 
