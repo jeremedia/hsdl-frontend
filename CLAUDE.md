@@ -36,7 +36,7 @@ npm run check
 npm run check:watch
 
 # Build for production
-npm run build
+npm run build      # svelte-kit sync -> svelte-check -> vite build. FAILS on any type error.
 
 # Preview production build
 npm run preview
