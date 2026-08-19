@@ -19,6 +19,7 @@
 	let enableStatus = $derived($page.url.searchParams.get('enable_status') || inkPrefs.get<string>('documents.enableStatus', ''));
 	let hasPdf = $derived($page.url.searchParams.get('has_pdf') || inkPrefs.get<string>('documents.hasPdf', ''));
 	let hasEmbedding = $derived($page.url.searchParams.get('has_embedding') || inkPrefs.get<string>('documents.hasEmbedding', ''));
+	let hasPublishDate = $derived($page.url.searchParams.get('has_publish_date') || inkPrefs.get<string>('documents.hasPublishDate', ''));
 
 	// Local filter inputs
 	let searchInput = $state('');
@@ -39,14 +40,16 @@
 			const es = $p.url.searchParams.get('enable_status') || inkPrefs.get<string>('documents.enableStatus', '');
 			const hp = $p.url.searchParams.get('has_pdf') || inkPrefs.get<string>('documents.hasPdf', '');
 			const he = $p.url.searchParams.get('has_embedding') || inkPrefs.get<string>('documents.hasEmbedding', '');
+			const hpd = $p.url.searchParams.get('has_publish_date') || inkPrefs.get<string>('documents.hasPublishDate', '');
 			return {
-				queryKey: ['ink', 'documents', cp, pp, s, d, q, es, hp, he] as const,
+				queryKey: ['ink', 'documents', cp, pp, s, d, q, es, hp, he, hpd] as const,
 				queryFn: () => inkApi.getDocuments({
 					page: cp, per_page: pp, sort: s, direction: d,
 					q: q || undefined,
 					enable_status: es || undefined,
 					has_pdf: hp === 'true' ? true : hp === 'false' ? false : undefined,
-					has_embedding: he === 'true' ? true : he === 'false' ? false : undefined
+					has_embedding: he === 'true' ? true : he === 'false' ? false : undefined,
+					has_publish_date: hpd === 'true' ? true : hpd === 'false' ? false : undefined
 				})
 			};
 		})
@@ -125,12 +128,14 @@
 		inkPrefs.set('documents.enableStatus', '');
 		inkPrefs.set('documents.hasPdf', '');
 		inkPrefs.set('documents.hasEmbedding', '');
+		inkPrefs.set('documents.hasPublishDate', '');
 		goto(`${base}/documents`);
 	}
 
-	let hasFilters = $derived(searchQuery || enableStatus || hasPdf || hasEmbedding);
+	let hasFilters = $derived(searchQuery || enableStatus || hasPdf || hasEmbedding || hasPublishDate);
 	let activeFilterCount = $derived(
-		(searchQuery ? 1 : 0) + (enableStatus ? 1 : 0) + (hasPdf ? 1 : 0) + (hasEmbedding ? 1 : 0)
+		(searchQuery ? 1 : 0) + (enableStatus ? 1 : 0) + (hasPdf ? 1 : 0) + (hasEmbedding ? 1 : 0) +
+			(hasPublishDate ? 1 : 0)
 	);
 
 	// Pagination
@@ -201,6 +206,22 @@
 			<option value="">Any embedding</option>
 			<option value="true">Has embedding</option>
 			<option value="false">No embedding</option>
+		</select>
+
+		<!--
+			Cataloguing QC. Labelled "publication date" rather than "undated": a record
+			card says "Undated" only when it has no dateOfRecordEntry either, which is
+			essentially no records — so an "Undated" filter here would look broken.
+			These are the records shown as "Added <year>".
+		-->
+		<select
+			class="input text-xs py-1.5 w-auto hidden sm:block"
+			value={hasPublishDate}
+			onchange={(e) => { inkPrefs.set('documents.hasPublishDate', e.currentTarget.value); goto(buildUrl({ has_publish_date: e.currentTarget.value || undefined, page: '1' })); }}
+		>
+			<option value="">Any publication date</option>
+			<option value="true">Has publication date</option>
+			<option value="false">No publication date</option>
 		</select>
 
 		{#if hasFilters}

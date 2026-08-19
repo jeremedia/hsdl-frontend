@@ -20,6 +20,7 @@ interface InkPreferences {
 	'documents.enableStatus': string;
 	'documents.hasPdf': string;
 	'documents.hasEmbedding': string;
+	'documents.hasPublishDate': string;
 	// Search
 	'search.mode': string;
 	'search.perPage': number;
@@ -37,6 +38,7 @@ const DEFAULTS: Partial<InkPreferences> = {
 	'documents.enableStatus': '',
 	'documents.hasPdf': '',
 	'documents.hasEmbedding': '',
+	'documents.hasPublishDate': '',
 	'search.mode': 'semantic',
 	'search.perPage': 25,
 	'editor.collapsedSections': [],

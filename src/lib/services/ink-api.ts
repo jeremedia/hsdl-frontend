@@ -448,6 +448,16 @@ export interface DocumentSearchParams {
 	enable_status?: string;
 	has_pdf?: boolean;
 	has_embedding?: boolean;
+	/**
+	 * Records with / without a resolvable publication date. Resolution is
+	 * publishDate -> displayDate -> nothing, with MDT's 1969-01-01 sentinel read
+	 * as absence, so this agrees with how public search date-sorts.
+	 *
+	 * NOT the same as the "Undated" label on a record card: that additionally
+	 * requires no dateOfRecordEntry, and matches essentially nothing, because
+	 * dateOfRecordEntry is set on every public record.
+	 */
+	has_publish_date?: boolean;
 }
 
 export interface SearchParams {
@@ -462,6 +472,16 @@ export interface SearchParams {
 	enable_status?: string;
 	has_pdf?: boolean;
 	has_embedding?: boolean;
+	/**
+	 * Records with / without a resolvable publication date. Resolution is
+	 * publishDate -> displayDate -> nothing, with MDT's 1969-01-01 sentinel read
+	 * as absence, so this agrees with how public search date-sorts.
+	 *
+	 * NOT the same as the "Undated" label on a record card: that additionally
+	 * requires no dateOfRecordEntry, and matches essentially nothing, because
+	 * dateOfRecordEntry is set on every public record.
+	 */
+	has_publish_date?: boolean;
 }
 
 class InkApiError extends Error {
@@ -978,6 +998,8 @@ class InkApiClient {
 		if (params.enable_status) searchParams.set('enable_status', params.enable_status);
 		if (params.has_pdf !== undefined) searchParams.set('has_pdf', String(params.has_pdf));
 		if (params.has_embedding !== undefined) searchParams.set('has_embedding', String(params.has_embedding));
+		if (params.has_publish_date !== undefined)
+			searchParams.set('has_publish_date', String(params.has_publish_date));
 
 		const query = searchParams.toString();
 		return this.fetch(`/documents${query ? `?${query}` : ''}`);
@@ -1008,6 +1030,8 @@ class InkApiClient {
 		if (params.enable_status) searchParams.set('enable_status', params.enable_status);
 		if (params.has_pdf !== undefined) searchParams.set('has_pdf', String(params.has_pdf));
 		if (params.has_embedding !== undefined) searchParams.set('has_embedding', String(params.has_embedding));
+		if (params.has_publish_date !== undefined)
+			searchParams.set('has_publish_date', String(params.has_publish_date));
 
 		return this.fetch(`/search?${searchParams.toString()}`);
 	}
