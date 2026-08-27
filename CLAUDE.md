@@ -1,4 +1,4 @@
-# CLAUDE.md - HSDL Frontend
+# CLAUDE.md - INK (staff tool SPA; the public frontend is public-frontend/variants/hsdl-next)
 
 This file provides guidance to Claude Code when working with the HSDL frontend SPA.
 
