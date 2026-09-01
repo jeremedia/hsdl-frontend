@@ -5,7 +5,7 @@
 	//
 	// UX contract:
 	//   - The `terms` field is the only structured editor here. Other
-	//     filter keys (sort, fielded_*, restricted, etc.) round-trip
+	//     filter keys (sort, fielded_*, year_start, etc.) round-trip
 	//     through `restJson` unchanged — surfaced under the "Advanced
 	//     JSON" disclosure as a fallback for fields the picker doesn't
 	//     model yet.
@@ -339,7 +339,7 @@
 	<!-- Advanced (non-terms keys) -->
 	<details bind:open={advancedOpen} class="border-t border-border-theme pt-2 mt-2">
 		<summary class="cursor-pointer text-[10px] uppercase tracking-wider text-text-theme-tertiary">
-			Advanced — other filter keys (sort, fielded_*, restricted, …)
+			Advanced — other filter keys (sort, fielded_*, year_start, …)
 		</summary>
 		<div class="mt-2 space-y-1">
 			<textarea
