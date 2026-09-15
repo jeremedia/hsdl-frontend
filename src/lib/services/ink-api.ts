@@ -315,7 +315,17 @@ export interface FeedbackTimelineDay {
 	resolved: number;
 }
 
-export type FeedbackVerdict = 'ready' | 'not_ready' | 'human_review';
+// Reviewer verdicts. `ready` / `needs_feedback` / `reject` are Proofline's
+// native vocabulary; `not_ready` / `human_review` are the pre-flip names that
+// still arrive on older rows. Semantics pair up:
+//   reject         ≈ not_ready     — the fix fails review, loops back to the maker
+//   needs_feedback ≈ human_review  — sent back with questions / escalated
+export type FeedbackVerdict =
+	| 'ready'
+	| 'needs_feedback'
+	| 'reject'
+	| 'not_ready'
+	| 'human_review';
 
 export interface FeedbackIssue {
 	id: string;
@@ -381,6 +391,15 @@ export interface VerifyReporterOption {
 	slack_user_id: string;
 	name: string;
 	pending: number;
+}
+
+// What POST /issues/:id/reject answers. Post-flip the reason is forwarded to
+// Proofline as text and the review loop has no attachment channel, so the
+// server may report how many uploads it dropped — surfaced to the reporter
+// rather than swallowed, since the form invites them to attach screenshots.
+export interface RejectIssueResult extends VerifyQueueItem {
+	attachments_ignored?: number;
+	message?: string;
 }
 
 export interface VerifyQueueResponse {
@@ -736,6 +755,9 @@ export interface WorkGroup {
 	full_id: string;
 	name: string;
 	assignee: string;
+	// The server never hands back abandoned groups, so the board only ever has
+	// to render these four. Treat the value as opaque when acting on it — see
+	// togglePark in routes/feedback/queue.
 	status: 'forming' | 'active' | 'parked' | 'shipped';
 	target_version: string | null;
 	position: number;
@@ -887,9 +909,10 @@ class InkApiClient {
 	}
 
 	// Reject the fix (reopens the issue, notifies team + assignee). reason is
-	// required; files are optional screenshot attachments. Sent as multipart so
-	// the files ride along — the first multipart call in this client.
-	async rejectIssue(id: string, reason: string, files?: File[]): Promise<VerifyQueueItem> {
+	// required; files are optional screenshot attachments, sent as multipart —
+	// the first multipart call in this client. The server may decline to keep
+	// them and say so via attachments_ignored; see RejectIssueResult.
+	async rejectIssue(id: string, reason: string, files?: File[]): Promise<RejectIssueResult> {
 		const form = new FormData();
 		form.append('reason', reason);
 		if (files) for (const f of files) form.append('images[]', f);
@@ -898,6 +921,10 @@ class InkApiClient {
 
 	// "Send myself the verify message" — re-posts this item's review DM and makes
 	// it the one Slack is waiting on.
+	//
+	// UNUSED since 2026-08-20: Proofline dispatches the reporter review DMs, so
+	// this endpoint answers a conflict. Kept for the rollback path; the INK
+	// control that called it was removed from routes/feedback/verify.
 	async resendReviewDm(id: string): Promise<{ ok: boolean }> {
 		return this.fetch(`/issues/${id}/resend_review_dm`, { method: 'POST' });
 	}

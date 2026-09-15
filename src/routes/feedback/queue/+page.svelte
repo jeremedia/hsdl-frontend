@@ -285,6 +285,9 @@
 	}
 	// Park (set aside) / unpark a group. Parked = visible + owned + ordered but out of
 	// the active work rotation (e.g. frontend groups during a design freeze).
+	// The toggle only ever writes 'active' or 'parked'; a status this build does
+	// not know about parks like any other non-parked group, which is visible and
+	// reversible rather than a crash.
 	async function togglePark(group: WorkGroup) {
 		await withBusy(async () => {
 			await inkApi.updateWorkGroup(group.full_id, { status: group.status === 'parked' ? 'active' : 'parked' });

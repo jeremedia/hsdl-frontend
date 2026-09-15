@@ -10,6 +10,17 @@
 
 	const queryClient = useQueryClient();
 
+	// Lightweight toast — mirrors the verify page (no shared component in INK yet).
+	// The inline priority/assignee selects write straight through to the API, so a
+	// failure has to say so; without this a 422/502/503 looked like a silent success.
+	let toast = $state<{ msg: string; kind: 'ok' | 'err' } | null>(null);
+	let toastTimer: ReturnType<typeof setTimeout> | null = null;
+	function showToast(msg: string, kind: 'ok' | 'err' = 'ok') {
+		toast = { msg, kind };
+		if (toastTimer) clearTimeout(toastTimer);
+		toastTimer = setTimeout(() => { toast = null; }, 4000);
+	}
+
 	// ── LocalStorage persistence ──
 	const STORAGE_KEY = 'ink-feedback-state';
 
@@ -148,13 +159,16 @@
 	const listQuery = createQuery(listQueryOptions);
 
 	// ── Priority mutation ──
+	// onError reports here; the call site additionally rolls the <select> back to
+	// the value it had, so the row never shows a change the server refused.
 	const priorityMutation = createMutation({
 		mutationFn: ({ id, priority }: { id: string; priority: string }) =>
 			inkApi.updateIssuePriority(id, priority),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['ink', 'feedback-list'] });
 			queryClient.invalidateQueries({ queryKey: ['ink', 'feedback'] });
-		}
+		},
+		onError: (e) => showToast(e instanceof Error ? e.message : 'Could not change priority.', 'err')
 	});
 
 	// ── Assignee mutation ── (empty string = unassign; DMs the assignee server-side)
@@ -164,7 +178,8 @@
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['ink', 'feedback-list'] });
 			queryClient.invalidateQueries({ queryKey: ['ink', 'feedback'] });
-		}
+		},
+		onError: (e) => showToast(e instanceof Error ? e.message : 'Could not change assignee.', 'err')
 	});
 
 	// ── Helpers ──
@@ -258,7 +273,15 @@
 		}
 	}
 
-	type VerdictKey = 'ready' | 'not_ready' | 'human_review' | 'unreviewed';
+	// Reviewer verdicts. `ready` / `needs_feedback` / `reject` are the native
+	// vocabulary; `not_ready` / `human_review` are the pre-flip names that still
+	// arrive on older rows and are kept so history stays readable.
+	//   reject         ≈ not_ready     — the fix fails review, loops back to the maker
+	//   needs_feedback ≈ human_review  — sent back with questions / escalated
+	type VerdictKey = 'ready' | 'needs_feedback' | 'reject' | 'not_ready' | 'human_review' | 'unreviewed';
+
+	// The legacy pair only earns a pill when rows still carry it.
+	const LEGACY_VERDICT_KEYS: VerdictKey[] = ['not_ready', 'human_review'];
 	interface VerdictStyle {
 		glyph: string;
 		short: string;        // 1-word badge label
@@ -272,25 +295,37 @@
 		switch (v) {
 			case 'ready':
 				return {
-					glyph: '✓', short: 'Ready', full: 'Claude: ready',
+					glyph: '✓', short: 'Ready', full: 'Reviewer: ready',
 					cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
 					rail: 'bg-green-500', dot: 'bg-green-500'
 				};
-			case 'not_ready':
+			case 'reject':
 				return {
-					glyph: '✗', short: 'Flag', full: 'Claude: not ready',
+					glyph: '✗', short: 'Reject', full: 'Reviewer: rejected — the fix fails review',
 					cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
 					rail: 'bg-red-500', dot: 'bg-red-500'
 				};
+			case 'not_ready':
+				return {
+					glyph: '✗', short: 'Flag', full: 'Reviewer: not ready (legacy verdict)',
+					cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+					rail: 'bg-red-500', dot: 'bg-red-500'
+				};
+			case 'needs_feedback':
+				return {
+					glyph: '?', short: 'Asked', full: 'Reviewer: sent back with questions',
+					cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+					rail: 'bg-amber-500', dot: 'bg-amber-500'
+				};
 			case 'human_review':
 				return {
-					glyph: '👁', short: 'Human', full: 'Claude: human review requested',
+					glyph: '👁', short: 'Human', full: 'Reviewer: human review requested (legacy verdict)',
 					cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
 					rail: 'bg-amber-500', dot: 'bg-amber-500'
 				};
 			default:
 				return {
-					glyph: '○', short: 'New', full: 'Unreviewed — awaiting Claude verdict',
+					glyph: '○', short: 'New', full: 'Unreviewed — awaiting a reviewer verdict',
 					cls: 'bg-surface-secondary text-text-theme-tertiary border border-dashed border-theme',
 					rail: 'bg-surface-secondary', dot: 'bg-text-theme-tertiary/40'
 				};
@@ -298,7 +333,7 @@
 	}
 
 	function verdictKey(v: string | null): VerdictKey {
-		if (v === 'ready' || v === 'not_ready' || v === 'human_review') return v;
+		if (v === 'ready' || v === 'needs_feedback' || v === 'reject' || v === 'not_ready' || v === 'human_review') return v;
 		return 'unreviewed';
 	}
 
@@ -337,9 +372,43 @@
 		view = 'list';
 	}
 
-	function toggleExpanded(id: string) {
+	// The list endpoint answers `notes: []` — only GET /issues/:id carries the
+	// discussion history — so a row fetches its own notes the first time it is
+	// opened, and keeps them for the rest of the session.
+	let notesCache = $state<Record<string, FeedbackIssueExpanded['notes']>>({});
+	let notesLoading = $state<Set<string>>(new Set());
+
+	async function ensureNotes(issue: FeedbackIssueExpanded) {
+		const id = issue.full_id;
+		if (issue.notes?.length || notesCache[id] || notesLoading.has(id)) return;
+		notesLoading = new Set(notesLoading).add(id);
+		try {
+			const full = await inkApi.getFeedbackIssue(id);
+			notesCache = { ...notesCache, [id]: full.notes ?? [] };
+		} catch (e) {
+			// Cache the miss so an expand/collapse cycle doesn't re-request a
+			// row the server can't answer for.
+			notesCache = { ...notesCache, [id]: [] };
+			showToast(e instanceof Error ? e.message : 'Could not load notes for this issue.', 'err');
+		} finally {
+			const next = new Set(notesLoading);
+			next.delete(id);
+			notesLoading = next;
+		}
+	}
+
+	function notesFor(issue: FeedbackIssueExpanded): FeedbackIssueExpanded['notes'] {
+		return issue.notes?.length ? issue.notes : (notesCache[issue.full_id] ?? []);
+	}
+
+	function toggleExpanded(id: string, issue?: FeedbackIssueExpanded) {
 		const next = new Set(expandedIds);
-		if (next.has(id)) next.delete(id); else next.add(id);
+		if (next.has(id)) {
+			next.delete(id);
+		} else {
+			next.add(id);
+			if (issue) void ensureNotes(issue);
+		}
 		expandedIds = next;
 	}
 
@@ -378,10 +447,22 @@
 
 	// Verdict counts across the current (server-filtered) result page
 	let verdictCounts = $derived.by(() => {
-		const counts: Record<VerdictKey, number> = { ready: 0, not_ready: 0, human_review: 0, unreviewed: 0 };
+		const counts: Record<VerdictKey, number> = {
+			ready: 0, needs_feedback: 0, reject: 0, not_ready: 0, human_review: 0, unreviewed: 0
+		};
 		const data = $listQuery.data;
 		if (data) for (const r of data.results) counts[verdictKey(r.latest_verdict)]++;
 		return counts;
+	});
+
+	// Pills for the summary strip: the native verdicts always, plus a legacy
+	// verdict only while rows on this page still carry it.
+	let verdictPills = $derived.by(() => {
+		const vc = verdictCounts;
+		const order: VerdictKey[] = ['ready', 'reject', 'needs_feedback', 'not_ready', 'human_review', 'unreviewed'];
+		return order
+			.filter((k) => !LEGACY_VERDICT_KEYS.includes(k) || vc[k] > 0)
+			.map((k) => ({ k, count: vc[k] }));
 	});
 
 	// Results after optional client-side verdict filter
@@ -534,20 +615,26 @@
 							<div class="flex items-center gap-1.5"><div class="w-3 h-0.5 bg-green-500 rounded-full"></div><span class="text-xs text-text-theme-tertiary">Resolved</span></div>
 						</div>
 					</div>
-					<div class="relative">
-						<svg viewBox="0 0 100 50" class="w-full h-40" preserveAspectRatio="none">
-							{#each [0.25, 0.5, 0.75] as ratio}
-								<line x1="0" y1={3 + 44 - ratio * 44} x2="100" y2={3 + 44 - ratio * 44}
-									stroke="currentColor" stroke-width="0.15" class="text-text-theme-tertiary opacity-20" />
-							{/each}
-							<polyline points={sparklinePoints(data, 'opened')} fill="none" stroke="#3b82f6" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
-							<polyline points={sparklinePoints(data, 'resolved')} fill="none" stroke="#22c55e" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
-						</svg>
-						<div class="flex items-center justify-between mt-1">
-							<span class="text-xs text-text-theme-tertiary">{formatDate(data.timeline[0]?.date)}</span>
-							<span class="text-xs text-text-theme-tertiary">{formatDate(data.timeline[data.timeline.length - 1]?.date)}</span>
+					{#if data.timeline.length === 0}
+						<div class="h-40 flex items-center justify-center text-xs text-text-theme-tertiary">
+							No activity recorded in this window.
 						</div>
-					</div>
+					{:else}
+						<div class="relative">
+							<svg viewBox="0 0 100 50" class="w-full h-40" preserveAspectRatio="none">
+								{#each [0.25, 0.5, 0.75] as ratio}
+									<line x1="0" y1={3 + 44 - ratio * 44} x2="100" y2={3 + 44 - ratio * 44}
+										stroke="currentColor" stroke-width="0.15" class="text-text-theme-tertiary opacity-20" />
+								{/each}
+								<polyline points={sparklinePoints(data, 'opened')} fill="none" stroke="#3b82f6" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
+								<polyline points={sparklinePoints(data, 'resolved')} fill="none" stroke="#22c55e" stroke-width="0.8" stroke-linejoin="round" stroke-linecap="round" />
+							</svg>
+							<div class="flex items-center justify-between mt-1">
+								<span class="text-xs text-text-theme-tertiary">{formatDate(data.timeline[0].date)}</span>
+								<span class="text-xs text-text-theme-tertiary">{formatDate(data.timeline[data.timeline.length - 1].date)}</span>
+							</div>
+						</div>
+					{/if}
 				</div>
 			</div>
 
@@ -651,20 +738,15 @@
 		{:else if $listQuery.data}
 			{@const ld = $listQuery.data}
 			{@const vc = verdictCounts}
-			{@const totalReviewable = vc.ready + vc.not_ready + vc.human_review + vc.unreviewed}
+			{@const totalReviewable = vc.ready + vc.needs_feedback + vc.reject + vc.not_ready + vc.human_review + vc.unreviewed}
 
 			<!-- ── Queue verdict summary strip ──
 			     Shows at-a-glance review state across the current result page so a reviewer
-			     can orient in < 3 seconds: "how many did Claude already approve?" -->
+			     can orient in < 3 seconds: "how many has a reviewer already approved?" -->
 			{#if showVerdictSummary && totalReviewable > 0}
 				<div class="flex flex-wrap items-center gap-1.5 text-xs">
 					<span class="text-text-theme-tertiary mr-1">Review queue:</span>
-					{#each [
-						{ k: 'ready' as VerdictKey,        count: vc.ready },
-						{ k: 'not_ready' as VerdictKey,    count: vc.not_ready },
-						{ k: 'human_review' as VerdictKey, count: vc.human_review },
-						{ k: 'unreviewed' as VerdictKey,   count: vc.unreviewed }
-					] as pill}
+					{#each verdictPills as pill (pill.k)}
 						{@const vs = verdictStyle(pill.k === 'unreviewed' ? null : pill.k)}
 						{@const isActive = filterVerdict === pill.k}
 						{@const isDim = pill.count === 0}
@@ -735,7 +817,7 @@
 						<div class={isExpanded ? 'bg-surface-secondary/50' : ''}>
 							<button
 								class="w-full grid grid-cols-[4px_86px_72px_1fr_90px_110px_80px_130px_110px_44px] gap-2 pr-3 py-2 text-left hover:bg-surface-secondary transition-colors items-center group min-w-[1010px]"
-								onclick={() => toggleExpanded(issue.full_id)}
+								onclick={() => toggleExpanded(issue.full_id, issue)}
 							>
 								<!-- Verdict rail (full-height 4px stripe colored by verdict; neutral when unreviewed) -->
 								<span class="self-stretch {vs.rail}" aria-hidden="true"></span>
@@ -775,7 +857,11 @@
 										value={issue.priority}
 										onchange={(e) => {
 											const target = e.target as HTMLSelectElement;
-											$priorityMutation.mutate({ id: issue.full_id, priority: target.value });
+											const previous = issue.priority;
+											$priorityMutation.mutate(
+												{ id: issue.full_id, priority: target.value },
+												{ onError: () => { target.value = previous; } }
+											);
 										}}
 										onclick={(e) => e.stopPropagation()}
 										class="text-xs bg-transparent border border-transparent hover:border-theme rounded px-1 py-0.5 text-text-theme-secondary cursor-pointer transition-colors
@@ -796,7 +882,11 @@
 										value={issue.assignee || ''}
 										onchange={(e) => {
 											const target = e.target as HTMLSelectElement;
-											$assigneeMutation.mutate({ id: issue.full_id, assignee: target.value });
+											const previous = issue.assignee || '';
+											$assigneeMutation.mutate(
+												{ id: issue.full_id, assignee: target.value },
+												{ onError: () => { target.value = previous; } }
+											);
 										}}
 										onclick={(e) => e.stopPropagation()}
 										class="text-xs bg-transparent border border-transparent hover:border-theme rounded px-1 py-0.5 cursor-pointer transition-colors w-full
@@ -819,9 +909,10 @@
 							       2. Review steps (the pass/fail checklist — reviewer's actual job)
 							       3. Description (background context for the issue)
 							       4. Screenshots
-							       5. Metadata (copy-id, filed date, query, resolution) — reference, lowest priority
-							       6. Notes (discussion history) -->
+							       5. Notes (discussion history)
+							       6. Metadata (copy-id, filed date, query, resolution) — reference, lowest priority -->
 							{#if isExpanded}
+								{@const notes = notesFor(issue)}
 								<div class="pb-3 pt-1 pr-3 pl-[185px] space-y-3">
 									<!-- 1. Test URL CTA -->
 									{#if issue.url_example}
@@ -851,7 +942,11 @@
 										<div class="markdown-block text-sm text-text-theme-secondary leading-relaxed max-w-prose">{@html renderMarkdown(issue.description)}</div>
 									{/if}
 
-									<!-- 4. Screenshots -->
+									<!-- 4. Screenshots — the list endpoint currently answers `images: []`
+									     for every row, and there is no count that would distinguish
+									     "had screenshots, can't show them" from "never had any", so the
+									     block stays hidden rather than captioning every row with a
+									     notice that would be wrong most of the time. -->
 									{#if issue.images?.length}
 										<div class="space-y-1.5">
 											<div class="flex items-center gap-1.5 text-xs text-text-theme-secondary">
@@ -862,11 +957,13 @@
 										</div>
 									{/if}
 
-									<!-- 5. Notes (discussion history) -->
-									{#if issue.notes && issue.notes.length > 0}
+									<!-- 5. Notes (discussion history — fetched per row on first expand) -->
+									{#if notesLoading.has(issue.full_id)}
+										<div class="text-xs text-text-theme-tertiary">Loading notes…</div>
+									{:else if notes.length > 0}
 										<div class="space-y-1.5">
-											<div class="text-xs font-medium text-text-theme-secondary">Notes ({issue.notes.length})</div>
-											{#each issue.notes as note}
+											<div class="text-xs font-medium text-text-theme-secondary">Notes ({notes.length})</div>
+											{#each notes as note}
 												<div class="text-xs bg-surface-secondary rounded-md p-2.5">
 													<div class="flex items-center gap-2 mb-1">
 														<span class="font-medium text-text-theme-primary">{note.author}</span>
@@ -884,7 +981,7 @@
 									<!-- 6. Metadata footer (copy-id, filed, query, resolution, reporter status) — reference row, lowest visual weight -->
 									<div class="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-text-theme-tertiary items-center pt-1 border-t border-theme/50">
 										<span class="inline-flex items-center gap-1">
-											<code class="bg-surface-secondary px-1.5 py-0.5 rounded text-text-theme-secondary font-mono">{issue.full_id.slice(0, 8)}</code>
+											<code class="bg-surface-secondary px-1.5 py-0.5 rounded text-text-theme-secondary font-mono">{issue.id}</code>
 											<button
 												class="text-text-theme-tertiary hover:text-text-theme-primary transition-colors"
 												title="Copy full issue ID"
@@ -931,6 +1028,19 @@
 		{/if}
 	{/if}
 </div>
+
+<!-- Toast — same shape as the verify page's -->
+{#if toast}
+	<div
+		class="fixed bottom-4 right-4 z-50 px-3.5 py-2 rounded-md text-xs font-medium border max-w-sm
+			{toast.kind === 'ok'
+				? 'bg-surface-elevated border-green-300 dark:border-green-700 text-text-theme-primary'
+				: 'bg-surface-elevated border-red-300 dark:border-red-700 text-text-theme-primary'}"
+		role="status"
+	>
+		{toast.msg}
+	</div>
+{/if}
 
 <style>
 	/* Compact markdown styling for descriptions, review steps, and note bodies.

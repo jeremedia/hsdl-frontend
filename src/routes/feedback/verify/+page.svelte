@@ -3,7 +3,7 @@
 	import { writable, derived } from 'svelte/store';
 	import { inkApi, type VerifyQueueItem, type VerifyQueueResponse } from '$lib/services/ink-api';
 	import {
-		ChevronDown, ChevronRight, ExternalLink, Image, Check, X, Send,
+		ChevronDown, ChevronRight, ExternalLink, Image, Check, X,
 		CheckCircle2, Inbox, MessageSquare, Paperclip, Loader2, Users
 	} from 'lucide-svelte';
 	import ImageGallery from '$lib/components/ImageGallery.svelte';
@@ -43,10 +43,10 @@
 	// Lightweight toast (no shared component in INK yet)
 	let toast = $state<{ msg: string; kind: 'ok' | 'err' } | null>(null);
 	let toastTimer: ReturnType<typeof setTimeout> | null = null;
-	function showToast(msg: string, kind: 'ok' | 'err' = 'ok') {
+	function showToast(msg: string, kind: 'ok' | 'err' = 'ok', ms = 3500) {
 		toast = { msg, kind };
 		if (toastTimer) clearTimeout(toastTimer);
-		toastTimer = setTimeout(() => { toast = null; }, 3500);
+		toastTimer = setTimeout(() => { toast = null; }, ms);
 	}
 
 	function refresh() {
@@ -61,22 +61,33 @@
 		onError: (e) => showToast(e instanceof Error ? e.message : 'Could not confirm — try again.', 'err')
 	});
 
+	// The form invites screenshots, but the review loop may take the reason as
+	// text only. When the server says it dropped the uploads, say so — the note
+	// still posts, and the reporter needs to know the files did not ride along.
 	const rejectMutation = createMutation({
 		mutationFn: ({ id, reason, files }: { id: string; reason: string; files: File[] }) =>
 			inkApi.rejectIssue(id, reason, files),
-		onSuccess: () => { showToast('Reopened — the team has been notified.'); cancelReject(); refresh(); },
+		onSuccess: (res) => {
+			const ignored = res.attachments_ignored ?? 0;
+			if (ignored > 0) {
+				showToast(
+					res.message ??
+						`Reopened and your note was sent, but ${ignored} attachment${ignored > 1 ? 's were' : ' was'} not included. Paste anything essential into the note.`,
+					'err',
+					9000
+				);
+			} else {
+				showToast('Reopened — the team has been notified.');
+			}
+			cancelReject();
+			refresh();
+		},
 		onError: (e) => showToast(e instanceof Error ? e.message : 'Could not submit — try again.', 'err')
-	});
-
-	const resendMutation = createMutation({
-		mutationFn: (id: string) => inkApi.resendReviewDm(id),
-		onSuccess: () => showToast('Sent to your Slack DMs.'),
-		onError: (e) => showToast(e instanceof Error ? e.message : 'Could not send the DM.', 'err')
 	});
 
 	const PRIORITY_RANK: Record<string, number> = { critical: 0, high: 1, normal: 2, low: 3, none: 4 };
 
-	// Admin view-as state. readOnly hides the confirm/reject/resend actions —
+	// Admin view-as state. readOnly hides the confirm/reject actions —
 	// the server enforces the same boundary (authorize_reporter! 403s cross-user
 	// actions), this just keeps the UI honest about it.
 	const readOnly = $derived(Boolean($queueQuery.data?.viewing_other));
@@ -428,15 +439,10 @@
 										>
 											<X size={12} /> Reject
 										</button>
-										<button
-											onclick={() => $resendMutation.mutate(issue.full_id)}
-											disabled={$resendMutation.isPending}
-											class="text-xs px-2.5 py-1.5 rounded-md text-text-theme-tertiary hover:text-text-theme-primary hover:bg-surface-secondary transition-colors inline-flex items-center gap-1.5 ml-auto disabled:opacity-50"
-											title="Re-send this item's review message to your Slack DMs"
-										>
-											{#if $resendMutation.isPending && $resendMutation.variables === issue.full_id}<Loader2 size={12} class="animate-spin" />{:else}<Send size={12} />{/if}
-											Send to my Slack
-										</button>
+										<!-- "Send to my Slack" removed: Proofline has dispatched the
+										     reporter review DMs since 2026-08-20, so this app can no
+										     longer re-post one and the endpoint answers a conflict.
+										     Accept / Reject above are the working controls. -->
 									</div>
 								{/if}
 							</div>
@@ -480,7 +486,7 @@
 <!-- Toast -->
 {#if toast}
 	<div
-		class="fixed bottom-4 right-4 z-50 px-3.5 py-2 rounded-md text-xs font-medium border
+		class="fixed bottom-4 right-4 z-50 px-3.5 py-2 rounded-md text-xs font-medium border max-w-sm
 			{toast.kind === 'ok'
 				? 'bg-surface-elevated border-green-300 dark:border-green-700 text-text-theme-primary'
 				: 'bg-surface-elevated border-red-300 dark:border-red-700 text-text-theme-primary'}"
