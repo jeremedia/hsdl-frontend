@@ -7,6 +7,7 @@
 	import {
 		detectKind,
 		draftToInput,
+		HOST_NAME_CAUTION,
 		needsJustification,
 		ROUTE_INFO,
 		type RuleDraft
@@ -138,6 +139,11 @@
 				A single address, a range like 65.242.55.0/24, or a host name pattern like *.example.edu.
 			{/if}
 		</p>
+		{#if kind === 'domain' && draft.value.trim()}
+			<p class="mt-1 rounded border border-border-theme bg-surface-secondary px-2 py-1 text-[11px] text-text-theme-secondary">
+				{HOST_NAME_CAUTION}
+			</p>
+		{/if}
 		{#each addressErrors as msg}
 			<p class="mt-1 text-xs text-error" role="alert">{msg}</p>
 		{/each}

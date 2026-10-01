@@ -238,8 +238,11 @@ export interface IpTestResult {
 	ip: string;
 	parsed: boolean;
 	ptr_host: string | null;
-	matched: { organization: OrgRef; rule: RuleFull; matched_on: string } | null;
-	candidates: Array<{ rule: RuleFull; organization: OrgRef; outcome: CandidateOutcome }>;
+	// fcrdns, on a host-name match: true when a forward lookup of the reverse
+	// DNS name led back to the address, false when it did not, null or absent
+	// when not checked.
+	matched: { organization: OrgRef; rule: RuleFull; matched_on: string; fcrdns?: boolean | null } | null;
+	candidates: Array<{ rule: RuleFull; organization: OrgRef; outcome: CandidateOutcome; fcrdns?: boolean | null }>;
 	explanation: string;
 }
 

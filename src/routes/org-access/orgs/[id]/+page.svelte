@@ -24,6 +24,7 @@
 		orgTypeLabel,
 		REQUEST_STATUS_INFO,
 		relativeDays,
+		HOST_NAME_CAUTION,
 		ruleTarget,
 		takeFlash,
 		TONE_CLASSES,
@@ -409,6 +410,11 @@
 										<span class="font-mono text-text-theme-primary">{ruleTarget(r)}</span>
 										{#if r.disabled}<span class="ml-1"><Chip>Off</Chip></span>{/if}
 										{#if r.breadth && r.breadth.addresses !== 1}<p class="text-[11px] text-text-theme-tertiary">{r.breadth.label}</p>{/if}
+										{#if r.kind === 'domain'}
+											<p class="text-[11px] text-text-theme-tertiary" title={HOST_NAME_CAUTION}>
+												Matched by host name, which a visitor’s own DNS can fake. A network range is safer.
+											</p>
+										{/if}
 										{#if r.note}<p class="text-xs text-text-theme-secondary">{r.note}</p>{/if}
 										{#if r.justification}<p class="text-xs text-text-theme-tertiary">Reason: {r.justification}</p>{/if}
 									</td>

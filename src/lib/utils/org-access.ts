@@ -451,3 +451,14 @@ export const SCOPE_INFO: Record<string, { label: string; help: string }> = {
 export function scopeLabel(scope: string): string {
 	return SCOPE_INFO[scope]?.label ?? scope.replace(/_/g, ' ');
 }
+
+// ── Host-name rules ─────────────────────────────────────────────────────
+// A host-name rule trusts the name a visitor's address reports (reverse DNS).
+// Whoever runs the DNS for an address can make it report any name, so a
+// network range is the safer record when the institution can give one.
+
+export const HOST_NAME_CAUTION =
+	'Host names are matched by the name a visitor’s address reports for itself (reverse DNS). Anyone who controls the DNS for their own address can make it report any name, so a network range is safer when the organization can provide one.';
+
+export const HOST_NAME_UNCONFIRMED =
+	'The host name was not confirmed by a forward lookup: looking that name up did not lead back to this address, so the name may not be genuine.';

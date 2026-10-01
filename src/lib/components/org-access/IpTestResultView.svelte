@@ -6,7 +6,7 @@
 	// answer to "why doesn't this person get access?".
 	import { base } from '$app/paths';
 	import type { IpTestResult } from '$lib/services/org-access-api';
-	import { outcomeInfo, routeLabel, ruleTarget, TONE_CLASSES } from '$lib/utils/org-access';
+	import { HOST_NAME_UNCONFIRMED, outcomeInfo, routeLabel, ruleTarget, TONE_CLASSES } from '$lib/utils/org-access';
 	import BannerPreview from './BannerPreview.svelte';
 	import Chip from './Chip.svelte';
 
@@ -48,6 +48,9 @@
 					{#if result.matched.rule.kind === 'domain' && result.matched.matched_on}
 						<!-- For a host-name rule, which name matched (reverse DNS, or the address text). -->
 						<p class="mt-1 text-xs">Matched the name <span class="font-mono">{result.matched.matched_on}</span>.</p>
+					{/if}
+					{#if result.matched.fcrdns === false}
+						<p class="mt-1 rounded border px-2 py-1 text-xs {TONE_CLASSES.warning}">{HOST_NAME_UNCONFIRMED}</p>
 					{/if}
 				</div>
 			</div>
@@ -91,7 +94,14 @@
 										>{c.organization.name}</a
 									>
 								</td>
-								<td class="py-1.5 pr-3 font-mono text-text-theme-primary">{ruleTarget(c.rule)}</td>
+								<td class="py-1.5 pr-3 font-mono text-text-theme-primary">
+									{ruleTarget(c.rule)}
+									{#if c.fcrdns === false}
+										<span class="block font-sans text-[11px] text-text-theme-secondary" title={HOST_NAME_UNCONFIRMED}
+											>Name not confirmed by a forward lookup</span
+										>
+									{/if}
+								</td>
 								<td class="py-1.5 text-text-theme-secondary">{routeLabel(c.rule.route)}</td>
 							</tr>
 						{/each}
