@@ -169,6 +169,9 @@ export function ruleTarget(rule: Pick<RuleFull, 'kind' | 'cidr_text' | 'domain_p
 }
 
 const IPV4_LIKE = /^\d{1,3}(\.\d{1,3}){0,3}(\/\d{1,2})?$/;
+// "65.242.55.0 - 65.242.55.255", "…–…", "… to …": a start-end range. The
+// server turns it into the network (or networks) it covers.
+const ADDRESS_RANGE = /^[0-9a-f:.]*\d[0-9a-f:.]*\s*(?:-|–|—|\bto\b)\s*[0-9a-f:.]*\d[0-9a-f:.]*$/i;
 
 // What a typed address most likely is. A glob ("204.17.196.*", "*.mil") is a
 // host-name pattern, matched against reverse DNS or the address text; only a
@@ -178,6 +181,7 @@ export function detectKind(value: string): RuleKind {
 	if (!v) return 'cidr';
 	if (v.includes('*')) return 'domain';
 	if (IPV4_LIKE.test(v)) return 'cidr';
+	if (ADDRESS_RANGE.test(v) && /[.:]/.test(v)) return 'cidr';
 	if (v.includes(':') && /^[0-9a-f:./]+$/i.test(v)) return 'cidr';
 	return 'domain';
 }

@@ -53,6 +53,21 @@
 	let parsedRanges = $derived($requestQuery.data?.parsed_ranges ?? []);
 	let status = $derived(req ? (REQUEST_STATUS_INFO[req.status] ?? { label: req.status, tone: 'neutral' as const }) : null);
 
+	// A range that spans several networks becomes one row per network, each
+	// keeping the route, note and reason typed for the range.
+	function splitItem(key: number, blocks: string[]) {
+		const at = items.findIndex((i) => i.key === key);
+		if (at < 0) return;
+		const base = items[at];
+		const rows = blocks.map((b) => ({
+			key: nextKey++,
+			include: true,
+			draft: { ...base.draft, value: b },
+			errors: {}
+		}));
+		items = [...items.slice(0, at), ...rows, ...items.slice(at + 1)];
+	}
+
 	// ── Approve: target organization ──
 	let target = $state<'new' | 'existing'>('new');
 	let existing = $state<{ id: number; name: string } | null>(null);
@@ -456,6 +471,7 @@
 							organizationId={target === 'existing' ? existing?.id : undefined}
 							serverErrors={item.errors}
 							idPrefix="req-addr-{item.key}"
+							onSplit={(blocks) => splitItem(item.key, blocks)}
 						/>
 					{:else}
 						<p class="font-mono text-sm text-text-theme-secondary">{item.draft.value}</p>

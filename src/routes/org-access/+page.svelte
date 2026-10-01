@@ -124,6 +124,13 @@
 						</li>
 					{/each}
 				</ul>
+				{#if s.attention.orgs_needing_attention}
+					<!-- orgs_needing_attention is the size of the ?flag=flagged list it opens. -->
+					<a href="{base}/org-access/orgs?flag=flagged" class="mt-2 inline-block text-xs text-interactive hover:underline">
+						See all {fmtNumber(s.attention.orgs_needing_attention)}
+						{s.attention.orgs_needing_attention === 1 ? 'organization' : 'organizations'} with something to check
+					</a>
+				{/if}
 			{/if}
 			{#if routeEntries.length}
 				<h3 class="mb-1 mt-4 text-xs font-semibold uppercase tracking-wide text-text-theme-tertiary">

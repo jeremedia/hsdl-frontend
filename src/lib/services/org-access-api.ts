@@ -219,6 +219,10 @@ export interface RuleValidation {
 	// The corrected address when the typed one is fixable
 	// ("205.155.65.236/16" -> "205.155.0.0/16", "204.17.196.*" -> "204.17.196.0/24").
 	suggestion?: string | null;
+	// A typed start-end range: the minimal networks that cover it exactly. With
+	// one block the range is valid and `normalized` is that network; with more
+	// it is an error, and each block has to be its own address.
+	blocks?: string[] | null;
 	errors: ServerMessage[]; // full sentences
 	field_errors?: FieldErrors;
 	warnings: ServerMessage[];

@@ -13,7 +13,8 @@
 		value,
 		route,
 		onUseNormalized,
-		onUseRoute
+		onUseRoute,
+		onSplit
 	}: {
 		validation: RuleValidation | null;
 		pending?: boolean;
@@ -22,14 +23,21 @@
 		route: Route;
 		onUseNormalized?: (normalized: string) => void;
 		onUseRoute?: (route: Route) => void;
+		onSplit?: (blocks: string[]) => void;
 	} = $props();
+
+	// A range that is several networks: each has to be its own address.
+	let blocks = $derived(validation?.blocks && validation.blocks.length > 1 ? validation.blocks : null);
 
 	let errors = $derived((validation?.errors ?? []).map(messageText).filter(Boolean));
 	let warnings = $derived((validation?.warnings ?? []).map(messageText).filter(Boolean));
 	let correction = $derived(
 		// The server's fix for a wrong-but-fixable address. A valid entry that is
 		// merely normalized ("1.2.3.4" stored as 1.2.3.4/32) is shown above instead.
-		validation?.suggestion && validation.suggestion !== value.trim()
+		// (Not for a multi-network range: its suggestion is only the first block.)
+		blocks
+			? null
+			: validation?.suggestion && validation.suggestion !== value.trim()
 			? validation.suggestion
 			: validation && !validation.valid && validation.normalized && validation.normalized !== value.trim()
 				? validation.normalized
@@ -83,6 +91,24 @@
 					Use {correction}
 				</button>
 			</p>
+		{/if}
+
+		{#if blocks}
+			<div class="rounded border px-2 py-1.5 {TONE_CLASSES.info}">
+				<p>This range isn’t one network. It is exactly these {blocks.length}:</p>
+				<p class="mt-0.5 font-mono">{blocks.join(', ')}</p>
+				{#if onSplit}
+					<button
+						type="button"
+						class="mt-1.5 rounded border border-border-theme bg-surface-elevated px-2 py-0.5 text-interactive hover:bg-surface-secondary"
+						onclick={() => onSplit?.(blocks!)}
+					>
+						Add these {blocks.length} networks as separate addresses
+					</button>
+				{:else}
+					<p class="mt-0.5 text-text-theme-secondary">Save one of them here, then add the others as new addresses.</p>
+				{/if}
+			</div>
 		{/if}
 
 		{#if !validation.valid && validation.breadth}

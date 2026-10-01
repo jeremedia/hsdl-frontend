@@ -159,6 +159,54 @@
 		}
 	}
 
+	// A range that spans several networks: save each block as its own address,
+	// one by one, with the route, note and reason typed for the range. Stops at
+	// the first refusal and leaves that block (and the rest) in the form.
+	async function addBlocks(blocks: string[]) {
+		if (!org) return;
+		const label = newDraft.value.trim();
+		if (!confirm(`Add ${blocks.length} addresses for ${label}?\n\n${blocks.join('\n')}`)) return;
+		savingNew = true;
+		addErrors = {};
+		const saved: string[] = [];
+		const warnings: string[] = [];
+		try {
+			for (const [i, block] of blocks.entries()) {
+				try {
+					const res = await orgAccessApi.createRule(org.id, draftToInput({ ...newDraft, value: block }));
+					saved.push(ruleTarget(res) || block);
+					warnings.push(...(res.warnings ?? []).map((w) => messageText(w)).filter(Boolean));
+				} catch (err) {
+					const reason =
+						err instanceof OrgAccessValidationError
+							? Object.values(err.fields).flat().join(' ')
+							: err instanceof Error
+								? err.message
+								: 'Could not save.';
+					const left = blocks.slice(i);
+					notice = {
+						tone: 'error',
+						lines: [
+							saved.length ? `Saved ${saved.length} of ${blocks.length}: ${saved.join(', ')}.` : 'Nothing was saved.',
+							`${block} was not saved: ${reason}`,
+							...(left.length > 1 ? [`Still to add: ${left.join(', ')}.`] : [])
+						]
+					};
+					newDraft = { ...newDraft, value: block };
+					return;
+				}
+			}
+			notice = warnings.length
+				? { tone: 'warning', lines: [`Saved ${saved.length} addresses: ${saved.join(', ')}. Worth knowing:`, ...new Set(warnings)] }
+				: { tone: 'success', lines: [`Saved ${saved.length} addresses: ${saved.join(', ')}. They take effect within a few minutes.`] };
+			newDraft = emptyDraft();
+			adding = false;
+		} finally {
+			savingNew = false;
+			await refresh();
+		}
+	}
+
 	function startEdit(r: RuleFull) {
 		editingRuleId = r.id;
 		editDraft = draftFromRule(r);
@@ -288,7 +336,13 @@
 
 		{#if adding}
 			<form onsubmit={addRule} class="mb-4 rounded-md border border-border-theme bg-surface-secondary p-3">
-				<AddressFields bind:draft={newDraft} organizationId={org.id} serverErrors={addErrors} idPrefix="new-addr" />
+				<AddressFields
+					bind:draft={newDraft}
+					organizationId={org.id}
+					serverErrors={addErrors}
+					idPrefix="new-addr"
+					onSplit={addBlocks}
+				/>
 				<div class="mt-3 flex gap-2">
 					<button type="submit" class="btn btn-primary text-sm disabled:opacity-50" disabled={savingNew || !newDraft.value.trim()}>
 						{savingNew ? 'Saving…' : 'Save address'}

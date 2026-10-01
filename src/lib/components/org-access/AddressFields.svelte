@@ -19,7 +19,8 @@
 		ruleId,
 		serverErrors = {},
 		idPrefix = 'addr',
-		onValidation
+		onValidation,
+		onSplit
 	}: {
 		draft: RuleDraft;
 		organizationId?: number;
@@ -27,6 +28,8 @@
 		serverErrors?: FieldErrors;
 		idPrefix?: string;
 		onValidation?: (v: RuleValidation | null) => void;
+		// Offered when the address is a range spanning several networks.
+		onSplit?: (blocks: string[]) => void;
 	} = $props();
 
 	const DEBOUNCE_MS = 400;
@@ -147,6 +150,7 @@
 				route={draft.route}
 				onUseNormalized={(n) => (draft.value = n)}
 				onUseRoute={pickRoute}
+				{onSplit}
 			/>
 		</div>
 	</div>
