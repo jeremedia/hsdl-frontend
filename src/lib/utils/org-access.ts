@@ -103,13 +103,29 @@ export const FLAG_INFO: Record<string, { label: string; help: string; tone: Tone
 	review_due: { label: 'Review due', help: 'The review date on file has passed.', tone: 'warning' }
 };
 
+// Filters the org list accepts beyond single flags.
+const FILTER_INFO: Record<string, { label: string; help: string; tone: Tone }> = {
+	flagged_rules: {
+		label: 'Addresses to check',
+		help: 'Has an active address worth a second look: very broad without a reason, overlapping, a shared proxy, unreadable.',
+		tone: 'warning'
+	},
+	flagged: {
+		label: 'Anything to check',
+		help: 'Quiet for 30 days, past its review date, or has an address worth a second look.',
+		tone: 'warning'
+	}
+};
+
 export function flagInfo(flag: string): { label: string; help: string; tone: Tone } {
+	if (FILTER_INFO[flag]) return FILTER_INFO[flag];
 	return FLAG_INFO[flag] ?? { label: flag.replace(/_/g, ' '), help: '', tone: 'neutral' };
 }
 
 // The org list's flag filter: org flags first (what an admin asks about), then
 // the address flags meaning "has an address with this flag".
 export const FILTER_FLAGS = [
+	'flagged_rules',
 	'gone_quiet',
 	'review_due',
 	'no_enabled_rules',
@@ -334,6 +350,16 @@ export function describeChanges(entry: HistoryEntry): Array<{ field: string; bef
 			const [before, after] = Array.isArray(pair) ? pair : [null, pair];
 			return { field: FIELD_LABELS[f] ?? f.replace(/_/g, ' '), before: showValue(f, before), after: showValue(f, after) };
 		});
+}
+
+// Who made a change: a person's name, or a plain reading of a system writer
+// ("system:route-backfill" -> "System (route backfill)").
+export function historyActor(entry: HistoryEntry): string {
+	if (entry.who?.name) return entry.who.name;
+	const actor = entry.actor?.trim();
+	if (!actor) return 'System';
+	const m = actor.match(/^system:(.+)$/);
+	return m ? `System (${m[1].replace(/[-_]/g, ' ')})` : actor;
 }
 
 export function describeHistoryEvent(entry: HistoryEntry): string {

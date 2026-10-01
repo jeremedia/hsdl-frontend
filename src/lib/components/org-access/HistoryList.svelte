@@ -2,7 +2,7 @@
 	// Who changed what, newest first. Every edit to an organization, its
 	// addresses and its requests is recorded on the server (paper_trail).
 	import type { HistoryEntry } from '$lib/services/org-access-api';
-	import { describeChanges, describeHistoryEvent, fmtDateTime } from '$lib/utils/org-access';
+	import { describeChanges, describeHistoryEvent, fmtDateTime, historyActor } from '$lib/utils/org-access';
 
 	let { entries }: { entries: HistoryEntry[] } = $props();
 </script>
@@ -17,7 +17,7 @@
 				<p class="text-text-theme-primary">
 					<span class="font-medium">{describeHistoryEvent(entry)}</span>
 					<span class="text-text-theme-secondary">
-						· {entry.who?.name ?? 'System'} · {fmtDateTime(entry.at)}</span
+						· {historyActor(entry)} · {fmtDateTime(entry.at)}</span
 					>
 				</p>
 				{#if changes.length}

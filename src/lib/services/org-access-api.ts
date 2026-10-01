@@ -59,7 +59,14 @@ export interface OrgAccessSummary {
 		by_route: Partial<Record<Route, number>>;
 	};
 	activity: { window_days: number; visits: number; orgs_seen: number; since: string };
-	attention: { gone_quiet: number; flagged_rules: number; review_due: number; pending_requests: number };
+	attention: {
+		gone_quiet: number;
+		flagged_rules: number; // addresses needing a look
+		flagged_orgs?: number; // organizations holding them = the ?flag=flagged_rules list
+		orgs_needing_attention?: number; // = the ?flag=flagged list
+		review_due: number;
+		pending_requests: number;
+	};
 	top_orgs: Array<{ id: number; name: string; visits: number }>;
 }
 
@@ -78,6 +85,7 @@ export interface OrgRow {
 	visits_30d: number;
 	last_seen_at: string | null;
 	flags: Flag[];
+	attention_rules?: number; // enabled addresses needing a look
 }
 
 export interface OrgListParams {
@@ -166,6 +174,8 @@ export interface Breadth {
 export interface HistoryEntry {
 	at: string;
 	who: UserRef | null;
+	// Raw whodunnit for a non-person writer ("system:route-backfill"); null for people.
+	actor?: string | null;
 	item_type: string; // "Organization" | "OrgIpRule" | "OrgAccessRequest"
 	item_id: number;
 	event: string; // "create" | "update" | "destroy"

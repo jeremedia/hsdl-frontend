@@ -43,9 +43,9 @@
 	let data = $derived($listQuery.data);
 	let pages = $derived(data ? Math.max(1, Math.ceil(data.total / (data.per || PER))) : 1);
 
-	// "flagged" is the overview's "addresses worth a second look" link: any
-	// address flag. Not a chip of its own, but shown as active when present.
-	let flagLabel = $derived(params.flag === 'flagged' ? 'Any flagged address' : params.flag ? flagInfo(params.flag).label : null);
+	// Includes the server's grouped filters ("flagged_rules", "flagged"), which
+	// the overview links to.
+	let flagLabel = $derived(params.flag ? flagInfo(params.flag).label : null);
 
 	function setParams(changes: Record<string, string | number | null | undefined>, resetPage = true) {
 		const sp = new URLSearchParams($page.url.searchParams);

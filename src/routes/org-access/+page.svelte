@@ -15,6 +15,8 @@
 	});
 
 	let s = $derived($summaryQuery.data);
+	// The link opens a list of organizations, so say how many it will show.
+	const atOrgs = (n?: number) => (n == null ? '' : `, at ${fmtNumber(n)} ${n === 1 ? 'organization' : 'organizations'}`);
 	let routeEntries = $derived(
 		s ? Object.entries(s.rules.by_route).filter(([, n]) => (n ?? 0) > 0).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0)) : []
 	);
@@ -37,9 +39,9 @@
 					},
 					{
 						n: s.attention.flagged_rules,
-						label: 'addresses worth a second look (very broad, overlapping, shared proxies…)',
-						one: 'address worth a second look (very broad, overlapping, shared proxy…)',
-						href: `${base}/org-access/orgs?flag=flagged`,
+						label: `addresses worth a second look${atOrgs(s.attention.flagged_orgs)} (very broad, overlapping, shared proxies…)`,
+						one: `address worth a second look${atOrgs(s.attention.flagged_orgs)} (very broad, overlapping, shared proxy…)`,
+						href: `${base}/org-access/orgs?flag=flagged_rules`,
 						icon: AlertTriangle
 					},
 					{

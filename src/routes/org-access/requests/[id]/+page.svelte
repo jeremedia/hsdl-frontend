@@ -107,17 +107,14 @@
 		};
 	}
 
-	// "65.242.55.0 - 65.242.55.255", "... to ...": a start-end range.
-	const RANGE_TEXT = /\d\s*(?:-|–|—|\bto\b)\s*\d/i;
-
-	// The server parses what the requester typed (parsed_ranges); its answer
-	// wins, with its proxy route suggestion. It splits on whitespace, though, so
-	// a field written as start-end ranges comes back in pieces: for that field
-	// (or a server that sent nothing) the ranges are expanded here instead.
+	// The server parses what the requester typed (parsed_ranges): start-end
+	// ranges expanded to CIDR blocks, address globs turned into networks, each
+	// with its proxy route suggestion. If it sent nothing for a field that has
+	// text, the field is parsed here instead.
 	function itemsFor(field: ParsedRange['field'], text: string | null, parsed: ParsedRange[], note: string) {
 		const proxy = field === 'proxy_addresses';
 		const mine = parsed.filter((p) => p.field === field);
-		if (mine.length === 0 || RANGE_TEXT.test(text ?? '')) {
+		if (mine.length === 0) {
 			return parseAddressList(text).map((v) => makeItem(v, note, proxy));
 		}
 		return mine.map((p) => {
@@ -125,6 +122,12 @@
 			// and offer the fix, rather than being corrected silently.
 			const item = makeItem(p.error ? p.input : (p.normalized ?? p.input), note, proxy);
 			if (p.suggested_route) item.draft.route = p.suggested_route;
+			// A fixable entry gets its "Use …" button from live validation; one the
+			// server couldn't read at all (a reversed range, say) keeps the
+			// server's reason next to it until it is edited.
+			if (p.error && !p.suggestion) {
+				item.errors = { base: [/^[a-z]/.test(p.error) ? `“${p.input}” ${p.error}.` : p.error] };
+			}
 			return item;
 		});
 	}
