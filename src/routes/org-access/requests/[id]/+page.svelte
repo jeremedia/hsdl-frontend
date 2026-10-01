@@ -19,10 +19,12 @@
 		type RequestFull,
 		type RequestStatus
 	} from '$lib/services/org-access-api';
+	import { InkApiError } from '$lib/services/ink-api';
 	import {
 		draftToInput,
 		fmtDate,
 		fmtDateTime,
+		maskedNetwork,
 		orgTypeLabel,
 		parseAddressList,
 		REQUEST_STATUS_INFO,
@@ -229,6 +231,11 @@
 					if (fe && sent[idx]) sent[idx].errors = fe;
 				});
 				approveError = 'Nothing was saved. Fix what’s marked below and approve again.';
+			} else if (err instanceof InkApiError && err.status === 409) {
+				// Someone else decided it meanwhile (or it was already approved):
+				// say so, and show the request as it is now.
+				approveError = `${err.message} Nothing was changed. The page now shows its current state.`;
+				await queryClient.invalidateQueries({ queryKey: ['org-access', 'request'] });
 			} else {
 				approveError = err instanceof Error ? err.message : 'Approval failed.';
 			}
@@ -333,17 +340,23 @@
 					<dt class="text-text-theme-secondary">Message</dt>
 					<dd class="whitespace-pre-line text-text-theme-primary">{req.message}</dd>
 				{/if}
+				<!-- submitted_ip is stored masked (IPv4 /24, IPv6 /48): a network, not an exact address. -->
 				<dt class="text-text-theme-secondary">Sent from</dt>
 				<dd class="text-text-theme-primary">
-					<span class="font-mono">{req.submitted_ip ?? '—'}</span>
+					{#if req.submitted_ip}
+						network <span class="font-mono">{maskedNetwork(req.submitted_ip)}</span>
+						<span class="block text-xs text-text-theme-tertiary">The exact address isn’t kept, only its network.</span>
+					{:else}
+						—
+					{/if}
 					{#if req.submitted_org}
 						<span class="block text-xs text-text-theme-secondary">
-							That address already gets access as
+							When they sent it, their address already got access as
 							<a class="text-interactive hover:underline" href="{base}/org-access/orgs/{req.submitted_org.id}">{req.submitted_org.name}</a>.
 						</span>
 					{:else if req.submitted_ip}
 						<a class="block text-xs text-interactive hover:underline" href="{base}/org-access/test?ip={encodeURIComponent(req.submitted_ip)}"
-							>Test this address</a
+							>Test this network (approximate: tests {req.submitted_ip})</a
 						>
 					{/if}
 				</dd>

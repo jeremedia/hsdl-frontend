@@ -238,11 +238,13 @@ export interface IpTestResult {
 	ip: string;
 	parsed: boolean;
 	ptr_host: string | null;
-	// fcrdns, on a host-name match: true when a forward lookup of the reverse
-	// DNS name led back to the address, false when it did not, null or absent
-	// when not checked.
+	// fcrdns, for a match on a reverse-DNS name: true when a forward lookup of
+	// that name led back to the address, false when it did not, null when not
+	// checked (and always null for a network-range or address-text match). Sent
+	// inside `matched` and repeated at the top level.
+	fcrdns?: boolean | null;
 	matched: { organization: OrgRef; rule: RuleFull; matched_on: string; fcrdns?: boolean | null } | null;
-	candidates: Array<{ rule: RuleFull; organization: OrgRef; outcome: CandidateOutcome; fcrdns?: boolean | null }>;
+	candidates: Array<{ rule: RuleFull; organization: OrgRef; outcome: CandidateOutcome }>;
 	explanation: string;
 }
 
@@ -259,6 +261,7 @@ export interface RequestRow {
 	contact_email: string | null;
 	status: RequestStatus;
 	organization_id: number | null;
+	// Masked like visit addresses (IPv4 /24, IPv6 /48): a network, not a person.
 	submitted_ip: string | null;
 	created_at: string;
 }
@@ -450,8 +453,10 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 		/* non-JSON body — keep the default below */
 	}
 	if (response.status === 422) throw parseValidationBody(body);
+	// A 409 carries a code in `error` and the sentence in `message`.
 	const b = body as { error?: string; message?: string } | null;
-	throw new InkApiError(response.status, b?.error ?? b?.message ?? `API error: ${response.status} ${response.statusText}`);
+	const text = response.status === 409 ? (b?.message ?? b?.error) : (b?.error ?? b?.message);
+	throw new InkApiError(response.status, text ?? `API error: ${response.status} ${response.statusText}`);
 }
 
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });

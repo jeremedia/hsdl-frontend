@@ -452,6 +452,14 @@ export function scopeLabel(scope: string): string {
 	return SCOPE_INFO[scope]?.label ?? scope.replace(/_/g, ' ');
 }
 
+// A request's submitted_ip is stored masked: "65.242.55.0" stands for the
+// network 65.242.55.0/24 (IPv6: /48). Say it that way, never as an address.
+export function maskedNetwork(ip: string | null | undefined): string | null {
+	if (!ip) return null;
+	if (ip.includes('/')) return ip;
+	return ip.includes(':') ? `${ip}/48` : `${ip}/24`;
+}
+
 // ── Host-name rules ─────────────────────────────────────────────────────
 // A host-name rule trusts the name a visitor's address reports (reverse DNS).
 // Whoever runs the DNS for an address can make it report any name, so a

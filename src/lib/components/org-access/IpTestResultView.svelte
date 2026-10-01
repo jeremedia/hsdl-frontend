@@ -13,6 +13,7 @@
 	let { result, compact = false }: { result: IpTestResult; compact?: boolean } = $props();
 
 	let tone = $derived(!result.parsed ? 'error' : result.matched ? 'success' : 'neutral');
+	let fcrdns = $derived(result.matched ? (result.matched.fcrdns ?? result.fcrdns ?? null) : null);
 </script>
 
 <div class="space-y-3">
@@ -49,7 +50,7 @@
 						<!-- For a host-name rule, which name matched (reverse DNS, or the address text). -->
 						<p class="mt-1 text-xs">Matched the name <span class="font-mono">{result.matched.matched_on}</span>.</p>
 					{/if}
-					{#if result.matched.fcrdns === false}
+					{#if fcrdns === false}
 						<p class="mt-1 rounded border px-2 py-1 text-xs {TONE_CLASSES.warning}">{HOST_NAME_UNCONFIRMED}</p>
 					{/if}
 				</div>
@@ -94,14 +95,7 @@
 										>{c.organization.name}</a
 									>
 								</td>
-								<td class="py-1.5 pr-3 font-mono text-text-theme-primary">
-									{ruleTarget(c.rule)}
-									{#if c.fcrdns === false}
-										<span class="block font-sans text-[11px] text-text-theme-secondary" title={HOST_NAME_UNCONFIRMED}
-											>Name not confirmed by a forward lookup</span
-										>
-									{/if}
-								</td>
+								<td class="py-1.5 pr-3 font-mono text-text-theme-primary">{ruleTarget(c.rule)}</td>
 								<td class="py-1.5 text-text-theme-secondary">{routeLabel(c.rule.route)}</td>
 							</tr>
 						{/each}
