@@ -2,7 +2,7 @@
 // Follows the same singleton pattern as api.ts but with session cookie auth
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://hsdl-ai.domt.app/api/spa/v1';
-const INK_BASE = API_BASE.replace('/spa/', '/ink/');
+export const INK_BASE = API_BASE.replace('/spa/', '/ink/');
 
 // Types
 
@@ -503,7 +503,7 @@ export interface SearchParams {
 	has_publish_date?: boolean;
 }
 
-class InkApiError extends Error {
+export class InkApiError extends Error {
 	status: number;
 	constructor(status: number, message: string) {
 		super(message);
