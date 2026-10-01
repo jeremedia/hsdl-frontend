@@ -71,8 +71,9 @@
 	<input
 		type="search"
 		bind:value={search}
-		placeholder="Search by name…"
-		aria-label="Search organizations by name"
+		placeholder="Search by name or address…"
+		aria-label="Search organizations by name, old system number, or a network address they cover"
+		title="A name, an old system number, or an address: an address finds the organizations whose ranges cover it"
 		class="w-full max-w-xs rounded-md border border-border-theme bg-surface-elevated px-3 py-2 text-sm text-text-theme-primary"
 	/>
 	<label class="flex items-center gap-1.5 text-xs text-text-theme-secondary">
