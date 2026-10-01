@@ -408,3 +408,16 @@ export function takeFlash(): { tone: Tone; lines: string[] } | null {
 	flash = null;
 	return f;
 }
+
+// ── Machine access keys ─────────────────────────────────────────────────
+
+export const SCOPE_INFO: Record<string, { label: string; help: string }> = {
+	org_access_feed: {
+		label: 'Organization usage feed',
+		help: 'Daily visit counts per organization (no addresses or visitor details), read by CHDS Pulse.'
+	}
+};
+
+export function scopeLabel(scope: string): string {
+	return SCOPE_INFO[scope]?.label ?? scope.replace(/_/g, ' ');
+}

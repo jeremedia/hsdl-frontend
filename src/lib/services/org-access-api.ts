@@ -312,6 +312,23 @@ function normalizeMatch(m: RawMatch): SuggestedMatch {
 	};
 }
 
+// ── Machine access keys ─────────────────────────────────────────────────
+// Bearer keys for machine readers (CHDS Pulse's usage feed). INK lists and
+// revokes them; it never creates one, so the plaintext key never crosses the
+// web. Keys are made with `bin/rails service_keys:create`.
+
+export interface ServiceKey {
+	id: number;
+	name: string;
+	token_prefix: string; // the key's first characters, e.g. "hsdlk_Ab3xYz"
+	scopes: string[];
+	last_used_at: string | null;
+	revoked_at: string | null;
+	revoked: boolean;
+	created_at: string;
+	created_by: UserRef | null;
+}
+
 // ── Errors ──────────────────────────────────────────────────────────────
 
 export type FieldErrors = Record<string, string[]>;
@@ -468,6 +485,10 @@ export const orgAccessApi = {
 		id: number | string,
 		body: { status?: RequestStatus; review_note?: string | null; organization_id?: number | null }
 	) => call<{ request: RequestFull }>(`/requests/${id}`, json('PATCH', body)),
+	listServiceKeys: () => call<{ service_keys: ServiceKey[] }>('/service_keys'),
+	revokeServiceKey: (id: number | string) =>
+		call<{ service_key: ServiceKey }>(`/service_keys/${id}/revoke`, { method: 'POST' }),
+
 	approveRequest: (id: number | string, body: ApproveBody) =>
 		call<{ request: RequestFull; organization: OrgFull; rules: RuleFull[]; warnings: ServerMessage[] }>(
 			`/requests/${id}/approve`,

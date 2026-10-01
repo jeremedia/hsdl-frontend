@@ -19,7 +19,8 @@
 		{ href: `${base}/org-access`, label: 'Overview', exact: true },
 		{ href: `${base}/org-access/orgs`, label: 'Organizations' },
 		{ href: `${base}/org-access/test`, label: 'Test an address' },
-		{ href: `${base}/org-access/requests`, label: 'Requests' }
+		{ href: `${base}/org-access/requests`, label: 'Requests' },
+		{ href: `${base}/org-access/keys`, label: 'Machine keys' }
 	];
 
 	let path = $derived($page.url.pathname.replace(/\/$/, ''));
