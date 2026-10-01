@@ -55,6 +55,7 @@
 		needsJustification(kind, draft.value) ||
 			draft.justification.trim() !== '' ||
 			(liveServerErrors.justification?.length ?? 0) > 0 ||
+			(validation?.field_errors?.justification?.length ?? 0) > 0 ||
 			(validation?.errors ?? []).some((e) => /justif|reason/i.test(typeof e === 'string' ? e : e.message))
 	);
 

@@ -30,8 +30,8 @@
 					},
 					{
 						n: s.attention.gone_quiet,
-						label: `organizations with no visits in the last ${s.activity.window_days} days`,
-						one: `organization with no visits in the last ${s.activity.window_days} days`,
+						label: `organizations that used to have visitors, but none in the last ${s.activity.window_days} days`,
+						one: `organization that used to have visitors, but none in the last ${s.activity.window_days} days`,
 						href: `${base}/org-access/orgs?flag=gone_quiet`,
 						icon: Moon
 					},
@@ -79,7 +79,8 @@
 			<p class="text-xs text-text-theme-secondary">Visits in the last {s.activity.window_days} days</p>
 			<p class="mt-1 text-2xl font-semibold tabular-nums text-text-theme-primary">{fmtNumber(s.activity.visits)}</p>
 			<p class="mt-1 text-xs text-text-theme-tertiary">
-				from {fmtNumber(s.activity.orgs_seen)} organizations since {fmtDate(s.activity.since)}
+				from {fmtNumber(s.activity.orgs_seen)}
+				{s.activity.orgs_seen === 1 ? 'organization' : 'organizations'} since {fmtDate(s.activity.since)}
 			</p>
 		</div>
 		<a href="{base}/org-access/requests" class="card rounded-md p-4 hover:bg-surface-secondary">

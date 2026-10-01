@@ -16,9 +16,9 @@
 		submitting = true;
 		errors = {};
 		try {
-			const org = await orgAccessApi.createOrganization(values);
+			const created = await orgAccessApi.createOrganization(values);
 			await queryClient.invalidateQueries({ queryKey: ['org-access'] });
-			await goto(`${base}/org-access/orgs/${org.id}`);
+			await goto(`${base}/org-access/orgs/${created.organization.id}`);
 		} catch (err) {
 			if (err instanceof OrgAccessValidationError) errors = err.fields;
 			else errors = { base: [err instanceof Error ? err.message : 'Could not create it.'] };

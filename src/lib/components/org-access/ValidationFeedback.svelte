@@ -27,9 +27,13 @@
 	let errors = $derived((validation?.errors ?? []).map(messageText).filter(Boolean));
 	let warnings = $derived((validation?.warnings ?? []).map(messageText).filter(Boolean));
 	let correction = $derived(
-		// Only offered when the typed text is wrong; a valid entry that is merely
-		// normalized ("1.2.3.4" stored as 1.2.3.4/32) is already shown above.
-		validation && !validation.valid && validation.normalized && validation.normalized !== value.trim() ? validation.normalized : null
+		// The server's fix for a wrong-but-fixable address. A valid entry that is
+		// merely normalized ("1.2.3.4" stored as 1.2.3.4/32) is shown above instead.
+		validation?.suggestion && validation.suggestion !== value.trim()
+			? validation.suggestion
+			: validation && !validation.valid && validation.normalized && validation.normalized !== value.trim()
+				? validation.normalized
+				: null
 	);
 	let suggestion = $derived(
 		validation?.suggested_route && validation.suggested_route !== route && validation.suggested_route !== 'unknown'

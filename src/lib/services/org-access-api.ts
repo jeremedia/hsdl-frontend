@@ -121,7 +121,8 @@ export interface OrgFull extends OrgEditable {
 	updated_at: string;
 	created_by: UserRef | null;
 	updated_by: UserRef | null;
-	// Org-level flags, if the server sends them; the org page computes them otherwise.
+	// Org-level and rule-level flags, as the org list shows them. The org page
+	// works out the org-level ones itself only if a server omits this.
 	flags?: Flag[];
 }
 
@@ -142,12 +143,24 @@ export interface RuleFull {
 	note: string | null;
 	justification: string | null;
 	disabled: boolean;
+	// The address as one string, whichever kind it is.
+	pattern?: string | null;
+	// CIDR rules only; null for host names and unreadable ranges.
+	breadth?: Breadth | null;
 	flags: Flag[];
 	overlaps?: RuleOverlap[];
 	visits_30d?: number;
 	last_matched_at?: string | null;
 	created_at?: string;
 	updated_at?: string;
+	created_by?: UserRef | null;
+	updated_by?: UserRef | null;
+}
+
+// `addresses` is null for host-name rules, whose reach can't be counted.
+export interface Breadth {
+	addresses: number | null;
+	label: string;
 }
 
 export interface HistoryEntry {
@@ -193,10 +206,14 @@ export interface RuleSaveResult extends RuleFull {
 export interface RuleValidation {
 	valid: boolean;
 	normalized: string | null;
-	errors: ServerMessage[];
+	// The corrected address when the typed one is fixable
+	// ("205.155.65.236/16" -> "205.155.0.0/16", "204.17.196.*" -> "204.17.196.0/24").
+	suggestion?: string | null;
+	errors: ServerMessage[]; // full sentences
+	field_errors?: FieldErrors;
 	warnings: ServerMessage[];
-	suggested_route: Route | null;
-	breadth: { addresses: number; label: string } | null;
+	suggested_route: Route | null; // only when the address is a known proxy
+	breadth: Breadth | null;
 }
 
 // ── Address tester ──────────────────────────────────────────────────────
@@ -244,16 +261,29 @@ export interface RequestFull extends RequestRow {
 	organization?: OrgRef | null;
 }
 
+// One row per organization. `detail` says which existing rule covers which
+// submitted range ("65.242.0.0/16 covers 65.242.55.0/32").
 export interface SuggestedMatch {
 	id: number;
 	name: string;
-	reason: string; // "similar_name" | "covers_range" | free text
-	detail?: string | null; // e.g. the submitted range an existing rule covers
-	disabled?: boolean;
+	reasons: string[]; // "covers_range" | "similar_name", strongest first
+	detail: string | null;
+	disabled: boolean;
+}
+
+// Each network the requester typed, parsed the way a rule would be.
+export interface ParsedRange {
+	field: 'ip_ranges' | 'proxy_addresses';
+	input: string;
+	normalized: string | null;
+	error: string | null;
+	suggestion: string | null;
+	suggested_route: Route | null;
 }
 
 export interface RequestDetail {
 	request: RequestFull;
+	parsed_ranges: ParsedRange[];
 	suggested_matches: SuggestedMatch[];
 }
 
@@ -263,12 +293,31 @@ export interface ApproveBody {
 	rules: RuleInput[];
 }
 
+// The match row has carried the organization both flat ({id, name}) and
+// nested ({organization: {id, name}}), and one `reason` or a `reasons` list.
+type RawMatch = Partial<SuggestedMatch> & {
+	organization?: OrgRef;
+	reason?: string;
+	covered?: Array<{ input: string; cidr: string }>;
+};
+
+function normalizeMatch(m: RawMatch): SuggestedMatch {
+	const covered = m.covered?.map((c) => `${c.cidr} covers ${c.input}`).join('; ');
+	return {
+		id: m.organization?.id ?? (m.id as number),
+		name: m.organization?.name ?? m.name ?? '',
+		reasons: m.reasons?.length ? m.reasons : m.reason ? [m.reason] : [],
+		detail: m.detail ?? (covered || null),
+		disabled: !!m.disabled
+	};
+}
+
 // ── Errors ──────────────────────────────────────────────────────────────
 
 export type FieldErrors = Record<string, string[]>;
 
 // A 422 from a write. `fields` maps an attribute to its messages; for approve,
-// `rules[i]` holds the errors for the i-th submitted address (null when fine).
+// `rules[i]` holds the errors for the i-th submitted address ({} or null when fine).
 export class OrgAccessValidationError extends InkApiError {
 	fields: FieldErrors;
 	rules: Array<FieldErrors | null>;
@@ -293,12 +342,35 @@ function toMessages(v: unknown): string[] {
 	return [String(v)];
 }
 
+// Rails field errors are fragments ("can't be blank", "is required for a
+// network this broad…"); some are already sentences ("205.155.65.236/16 is
+// really 205.155.0.0/16 — use that?"). Give a fragment its subject so it reads
+// on its own under the field and in a summary line.
+const FIELD_SUBJECTS: Record<string, string> = {
+	name: 'The name',
+	cidr_text: 'This address',
+	domain_pattern: 'This host name',
+	justification: 'A reason',
+	route: '“How they connect”',
+	organization_id: 'The organization',
+	contact_email: 'The contact email',
+	review_by: 'The review date',
+	base: ''
+};
+
+export function asSentence(field: string, msg: string): string {
+	if (!msg || /^[A-Z0-9*“"]/.test(msg)) return msg;
+	const subject = FIELD_SUBJECTS[field] ?? field.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+	const text = subject ? `${subject} ${msg}` : msg.replace(/^./, (c) => c.toUpperCase());
+	return /[.?!]$/.test(text) ? text : `${text}.`;
+}
+
 function toFieldErrors(v: unknown): FieldErrors {
 	if (!v || typeof v !== 'object' || Array.isArray(v)) return v ? { base: toMessages(v) } : {};
 	const out: FieldErrors = {};
 	for (const [k, msgs] of Object.entries(v as Record<string, unknown>)) {
 		if (k === 'rules' || k === 'organization') continue;
-		out[k] = toMessages(msgs);
+		out[k] = toMessages(msgs).map((m) => asSentence(k, m));
 	}
 	return out;
 }
@@ -363,16 +435,17 @@ export const orgAccessApi = {
 	listOrganizations: (p: OrgListParams = {}) =>
 		call<OrgListResponse>(`/organizations${qs({ ...p })}`),
 	getOrganization: (id: number | string) => call<OrgDetail>(`/organizations/${id}`),
-	createOrganization: (body: Partial<OrgEditable>) => call<OrgFull>('/organizations', json('POST', body)),
+	// Both answer with the full organization page payload.
+	createOrganization: (body: Partial<OrgEditable>) => call<OrgDetail>('/organizations', json('POST', body)),
 	updateOrganization: (id: number | string, body: Partial<OrgEditable>) =>
-		call<OrgFull>(`/organizations/${id}`, json('PATCH', body)),
+		call<OrgDetail>(`/organizations/${id}`, json('PATCH', body)),
 
 	createRule: (orgId: number | string, body: RuleInput) =>
 		call<RuleSaveResult>(`/organizations/${orgId}/rules`, json('POST', body)),
 	updateRule: (id: number | string, body: Partial<RuleInput>) =>
 		call<RuleSaveResult>(`/rules/${id}`, json('PATCH', body)),
 	// rule_id (not in the contract) lets the server skip the rule being edited
-	// when it checks for duplicates; the server may ignore it.
+	// when it checks for duplicates; servers that predate it ignore it.
 	validateRule: (body: RuleInput & { organization_id?: number; rule_id?: number }, signal?: AbortSignal) =>
 		call<RuleValidation>('/rules/validate', { ...json('POST', body), signal }),
 
@@ -381,19 +454,22 @@ export const orgAccessApi = {
 
 	listRequests: (status?: RequestStatus | 'all') =>
 		call<{ requests: RequestRow[] }>(`/requests${qs({ status: status === 'all' ? undefined : status })}`),
-	// The contract says "request + suggested_matches"; accept either the wrapped
-	// { request, suggested_matches } or the request's own fields at top level.
 	getRequest: async (id: number | string): Promise<RequestDetail> => {
-		const data = await call<Partial<RequestDetail> & Partial<RequestFull>>(`/requests/${id}`);
-		const request = (data.request ?? data) as RequestFull;
-		return { request, suggested_matches: data.suggested_matches ?? [] };
+		const data = await call<{ request: RequestFull; parsed_ranges?: ParsedRange[]; suggested_matches?: RawMatch[] }>(
+			`/requests/${id}`
+		);
+		return {
+			request: data.request,
+			parsed_ranges: data.parsed_ranges ?? [],
+			suggested_matches: (data.suggested_matches ?? []).map(normalizeMatch)
+		};
 	},
 	updateRequest: (
 		id: number | string,
 		body: { status?: RequestStatus; review_note?: string | null; organization_id?: number | null }
-	) => call<RequestFull>(`/requests/${id}`, json('PATCH', body)),
+	) => call<{ request: RequestFull }>(`/requests/${id}`, json('PATCH', body)),
 	approveRequest: (id: number | string, body: ApproveBody) =>
-		call<{ request: RequestFull; organization: OrgFull; rules: RuleSaveResult[] }>(
+		call<{ request: RequestFull; organization: OrgFull; rules: RuleFull[]; warnings: ServerMessage[] }>(
 			`/requests/${id}/approve`,
 			json('POST', body)
 		)

@@ -35,7 +35,9 @@
 		<figcaption class="mt-1 flex justify-between text-[11px] text-text-theme-tertiary">
 			<span>{fmtDate(daily[0].date)}</span>
 			<span>
-				{fmtNumber(total)} visits on {activeDays} of {daily.length} days · busiest day {fmtNumber(total === 0 ? 0 : max)}
+				{fmtNumber(total)} {total === 1 ? 'visit' : 'visits'} on {activeDays} of {daily.length} days · busiest day {fmtNumber(
+					total === 0 ? 0 : max
+				)}
 			</span>
 			<span>{fmtDate(daily[daily.length - 1].date)}</span>
 		</figcaption>

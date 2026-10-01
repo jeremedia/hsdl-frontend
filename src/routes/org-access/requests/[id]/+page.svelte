@@ -9,11 +9,13 @@
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { derived } from 'svelte/store';
 	import {
+		messageText,
 		orgAccessApi,
 		OrgAccessValidationError,
 		type FieldErrors,
 		type OrgEditable,
 		type OrgRow,
+		type ParsedRange,
 		type RequestFull,
 		type RequestStatus
 	} from '$lib/services/org-access-api';
@@ -24,6 +26,7 @@
 		orgTypeLabel,
 		parseAddressList,
 		REQUEST_STATUS_INFO,
+		setFlash,
 		TONE_CLASSES,
 		type RuleDraft
 	} from '$lib/utils/org-access';
@@ -47,6 +50,7 @@
 
 	let req = $derived($requestQuery.data?.request);
 	let matches = $derived($requestQuery.data?.suggested_matches ?? []);
+	let parsedRanges = $derived($requestQuery.data?.parsed_ranges ?? []);
 	let status = $derived(req ? (REQUEST_STATUS_INFO[req.status] ?? { label: req.status, tone: 'neutral' as const }) : null);
 
 	// ── Approve: target organization ──
@@ -103,20 +107,43 @@
 		};
 	}
 
-	function seed(r: RequestFull) {
+	// "65.242.55.0 - 65.242.55.255", "... to ...": a start-end range.
+	const RANGE_TEXT = /\d\s*(?:-|–|—|\bto\b)\s*\d/i;
+
+	// The server parses what the requester typed (parsed_ranges); its answer
+	// wins, with its proxy route suggestion. It splits on whitespace, though, so
+	// a field written as start-end ranges comes back in pieces: for that field
+	// (or a server that sent nothing) the ranges are expanded here instead.
+	function itemsFor(field: ParsedRange['field'], text: string | null, parsed: ParsedRange[], note: string) {
+		const proxy = field === 'proxy_addresses';
+		const mine = parsed.filter((p) => p.field === field);
+		if (mine.length === 0 || RANGE_TEXT.test(text ?? '')) {
+			return parseAddressList(text).map((v) => makeItem(v, note, proxy));
+		}
+		return mine.map((p) => {
+			// An unreadable entry stays as typed so live validation can explain it
+			// and offer the fix, rather than being corrected silently.
+			const item = makeItem(p.error ? p.input : (p.normalized ?? p.input), note, proxy);
+			if (p.suggested_route) item.draft.route = p.suggested_route;
+			return item;
+		});
+	}
+
+	function seed(r: RequestFull, parsed: ParsedRange[]) {
 		const note = `From the access request of ${fmtDate(r.created_at)}`;
 		items = [
-			...parseAddressList(r.ip_ranges).map((v) => makeItem(v, note)),
-			...parseAddressList(r.proxy_addresses).map((v) => makeItem(v, `${note} (proxy address)`, true))
+			...itemsFor('ip_ranges', r.ip_ranges, parsed, note),
+			...itemsFor('proxy_addresses', r.proxy_addresses, parsed, `${note} (proxy address)`)
 		];
 	}
 
 	// Pre-fill once per request, when it first loads; later refetches keep edits.
 	$effect(() => {
 		const r = req;
+		const parsed = parsedRanges;
 		if (r && seededFor !== r.id) {
 			seededFor = r.id;
-			seed(r);
+			seed(r, parsed);
 			if (r.organization) chooseExisting(r.organization);
 		}
 	});
@@ -169,6 +196,12 @@
 				})
 			});
 			await queryClient.invalidateQueries({ queryKey: ['org-access'] });
+			const warnings = (res?.warnings ?? []).map(messageText).filter(Boolean);
+			setFlash(
+				warnings.length
+					? { tone: 'warning', lines: ['Approved. Worth knowing:', ...warnings] }
+					: { tone: 'success', lines: ['Approved. Visitors from these addresses get organization access within a few minutes.'] }
+			);
 			const orgId = res?.organization?.id ?? res?.request?.organization_id ?? existing?.id;
 			if (orgId) await goto(`${base}/org-access/orgs/${orgId}`);
 		} catch (err) {
@@ -309,21 +342,24 @@
 			{:else}
 				<ul class="divide-y divide-border-theme">
 					{#each matches as m (m.id)}
+						{@const o = { id: m.id, name: m.name }}
 						<li class="py-2 text-sm">
 							<div class="flex flex-wrap items-center gap-2">
-								<a class="font-medium text-interactive hover:underline" href="{base}/org-access/orgs/{m.id}">{m.name}</a>
-								{#if m.disabled}<Chip>Turned off</Chip>{/if}
-								<Chip tone="info">{m.reason === 'covers_range' ? 'Already covers an address' : m.reason === 'similar_name' ? 'Similar name' : m.reason}</Chip>
+								<a class="font-medium text-interactive hover:underline" href="{base}/org-access/orgs/{o.id}">{o.name}</a>
+								{#if m.disabled}<Chip tone="warning">Turned off</Chip>{/if}
+								{#each m.reasons as reason}
+									<Chip tone="info">{reason === 'covers_range' ? 'Already covers what they sent' : reason === 'similar_name' ? 'Similar name' : reason}</Chip>
+								{/each}
 							</div>
-							{#if m.detail}<p class="mt-0.5 text-xs text-text-theme-secondary">{m.detail}</p>{/if}
+							{#if m.detail}<p class="mt-0.5 text-xs text-text-theme-secondary">Existing address <span class="font-mono">{m.detail}</span>.</p>{/if}
 							<div class="mt-1 flex flex-wrap gap-3 text-xs">
-								<button class="text-interactive hover:underline" onclick={() => chooseExisting(m)}>Add the addresses to this one</button>
-								{#if req.organization?.id !== m.id}
+								<button class="text-interactive hover:underline" onclick={() => chooseExisting(o)}>Add the addresses to this one</button>
+								{#if req.organization?.id !== o.id}
 									<button
 										class="text-interactive hover:underline disabled:opacity-50"
 										disabled={deciding}
 										onclick={() =>
-											decide({ organization_id: m.id }, `Link this request to ${m.name} without adding any addresses?`)}
+											decide({ organization_id: o.id }, `Link this request to ${o.name} without adding any addresses?`)}
 										>Link without changes</button
 									>
 								{/if}

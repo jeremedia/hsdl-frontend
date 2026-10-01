@@ -25,8 +25,10 @@
 		REQUEST_STATUS_INFO,
 		relativeDays,
 		ruleTarget,
+		takeFlash,
 		TONE_CLASSES,
-		type RuleDraft
+		type RuleDraft,
+		type Tone
 	} from '$lib/utils/org-access';
 	import BannerPreview from '$lib/components/org-access/BannerPreview.svelte';
 	import FlagChip from '$lib/components/org-access/FlagChip.svelte';
@@ -56,18 +58,27 @@
 	let ruleById = $derived(new Map(rules.map((r) => [r.id, r])));
 	let orgFlags = $derived.by(() => {
 		if (!org) return [] as string[];
-		if (org.flags) return org.flags;
+		// Only the organization-level flags here; each address shows its own.
+		if (org.flags) return org.flags.filter((f) => ORG_FLAGS.includes(f));
+		// Fallback for a server that omits flags. Same rules as the server's
+		// Directory#org_flags: nothing for a turned-off org; gone_quiet means
+		// visitors before the 30-day window and none inside it.
 		const flags: string[] = [];
+		if (org.disabled) return flags;
 		const hasActive = rules.some((r) => !r.disabled);
 		if (!hasActive) flags.push('no_enabled_rules');
-		const last30 = (d?.activity.daily ?? []).slice(-30).reduce((s, x) => s + x.visits, 0);
-		if (!org.disabled && hasActive && d?.activity.daily.length && last30 === 0) flags.push('gone_quiet');
+		const daily = d?.activity.daily ?? [];
+		const sum = (xs: typeof daily) => xs.reduce((n, x) => n + x.visits, 0);
+		if (hasActive && sum(daily.slice(-30)) === 0 && sum(daily.slice(0, -30)) > 0) flags.push('gone_quiet');
 		if (org.review_by && new Date(`${org.review_by}T23:59:59`) < new Date()) flags.push('review_due');
 		return flags;
 	});
 
-	// Notices after a write: what the server warned about while saving.
-	let notice = $state<{ tone: 'success' | 'warning' | 'error'; lines: string[] } | null>(null);
+	const ORG_FLAGS = ['no_enabled_rules', 'gone_quiet', 'review_due'];
+
+	// Notices after a write: what the server warned about while saving. Starts
+	// with any notice handed over by the approve flow.
+	let notice = $state<{ tone: Tone; lines: string[] } | null>(takeFlash());
 
 	async function refresh() {
 		await queryClient.invalidateQueries({ queryKey: ['org-access'] });
@@ -343,6 +354,7 @@
 									<td class="py-2 pr-3">
 										<span class="font-mono text-text-theme-primary">{ruleTarget(r)}</span>
 										{#if r.disabled}<span class="ml-1"><Chip>Off</Chip></span>{/if}
+										{#if r.breadth && r.breadth.addresses !== 1}<p class="text-[11px] text-text-theme-tertiary">{r.breadth.label}</p>{/if}
 										{#if r.note}<p class="text-xs text-text-theme-secondary">{r.note}</p>{/if}
 										{#if r.justification}<p class="text-xs text-text-theme-tertiary">Reason: {r.justification}</p>{/if}
 									</td>

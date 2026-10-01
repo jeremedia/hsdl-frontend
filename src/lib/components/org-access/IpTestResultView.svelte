@@ -45,8 +45,9 @@
 							>{result.matched.organization.name}</a
 						>, address <span class="font-mono text-text-theme-primary">{ruleTarget(result.matched.rule)}</span>.
 					</p>
-					{#if result.matched.matched_on}
-						<p class="mt-1 text-xs">Matched on: {result.matched.matched_on}</p>
+					{#if result.matched.rule.kind === 'domain' && result.matched.matched_on}
+						<!-- For a host-name rule, which name matched (reverse DNS, or the address text). -->
+						<p class="mt-1 text-xs">Matched the name <span class="font-mono">{result.matched.matched_on}</span>.</p>
 					{/if}
 				</div>
 			</div>

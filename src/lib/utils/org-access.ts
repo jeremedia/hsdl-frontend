@@ -96,8 +96,8 @@ export const FLAG_INFO: Record<string, { label: string; help: string; tone: Tone
 		tone: 'warning'
 	},
 	gone_quiet: {
-		label: 'Gone quiet',
-		help: 'Turned on and has addresses, but nobody has arrived from them recently. The addresses may have changed.',
+		label: 'Quiet for 30 days',
+		help: 'People used to arrive from these addresses, but nobody has in the last 30 days. The organization’s addresses may have changed.',
 		tone: 'info'
 	},
 	review_due: { label: 'Review due', help: 'The review date on file has passed.', tone: 'warning' }
@@ -148,8 +148,8 @@ export const REQUEST_STATUS_INFO: Record<RequestStatus, { label: string; tone: T
 
 // ── Address text ────────────────────────────────────────────────────────
 
-export function ruleTarget(rule: Pick<RuleFull, 'kind' | 'cidr_text' | 'domain_pattern'>): string {
-	return (rule.kind === 'domain' ? rule.domain_pattern : rule.cidr_text) ?? '';
+export function ruleTarget(rule: Pick<RuleFull, 'kind' | 'cidr_text' | 'domain_pattern' | 'pattern'>): string {
+	return rule.pattern ?? (rule.kind === 'domain' ? rule.domain_pattern : rule.cidr_text) ?? '';
 }
 
 const IPV4_LIKE = /^\d{1,3}(\.\d{1,3}){0,3}(\/\d{1,2})?$/;
@@ -302,13 +302,24 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 // Bookkeeping columns nobody needs to read in a history list.
-const HIDDEN_FIELDS = new Set(['id', 'created_at', 'updated_at', 'created_by_id', 'updated_by_id', 'source', 'synced_at']);
+const HIDDEN_FIELDS = new Set([
+	'id',
+	'created_at',
+	'updated_at',
+	'created_by_id',
+	'updated_by_id',
+	'reviewed_by_id',
+	'source',
+	'synced_at',
+	'legacy_id'
+]);
 
 function showValue(field: string, v: unknown): string {
 	if (v === null || v === undefined || v === '') return '(blank)';
 	if (field === 'disabled') return v ? 'yes' : 'no';
 	if (field === 'route') return routeLabel(String(v));
 	if (field === 'org_type') return orgTypeLabel(String(v));
+	if (field === 'kind') return v === 'domain' ? 'host name' : v === 'cidr' ? 'network range' : String(v);
 	if (typeof v === 'boolean') return v ? 'yes' : 'no';
 	return String(v);
 }
@@ -317,6 +328,8 @@ export function describeChanges(entry: HistoryEntry): Array<{ field: string; bef
 	if (!entry.changes) return [];
 	return Object.entries(entry.changes)
 		.filter(([f]) => !HIDDEN_FIELDS.has(f))
+		// An address's own organization is the page you're on.
+		.filter(([f]) => !(entry.item_type === 'OrgIpRule' && f === 'organization_id'))
 		.map(([f, pair]) => {
 			const [before, after] = Array.isArray(pair) ? pair : [null, pair];
 			return { field: FIELD_LABELS[f] ?? f.replace(/_/g, ' '), before: showValue(f, before), after: showValue(f, after) };
@@ -378,4 +391,20 @@ export function draftToInput(d: RuleDraft): RuleInput {
 		justification: d.justification.trim() || null,
 		disabled: d.disabled
 	};
+}
+
+// ── One-shot notice across a navigation ─────────────────────────────────
+// Approving a request lands on the new organization's page; the server's
+// warnings from that approval (overlaps, shared proxies) are shown there once.
+
+let flash: { tone: Tone; lines: string[] } | null = null;
+
+export function setFlash(notice: { tone: Tone; lines: string[] }) {
+	flash = notice;
+}
+
+export function takeFlash(): { tone: Tone; lines: string[] } | null {
+	const f = flash;
+	flash = null;
+	return f;
 }
